@@ -20,6 +20,63 @@ param(
 $PROJECT_ROOT = "D:\staging\resume-builder-v2"
 $SONNET       = "claude-sonnet-4-6"
 
+# ── Completion Protocol (appended to every phase session, not debug) ──────────
+# This enforces: test → spec compliance → code review → diff → commit gate
+$completionProtocol = @'
+
+════════════════════════════════════════════════════════════
+COMPLETION PROTOCOL — run after implementation is done
+════════════════════════════════════════════════════════════
+
+STEP A — TEST
+  Run: pytest -v
+  All tests must pass — v1 baseline (82) + new tests.
+  If any fail: fix before proceeding. Do not suppress or skip.
+  Then run: /generate-tests app/<this-phase-module>/
+  Show full pytest output.
+
+STEP B — SPEC COMPLIANCE CHECK
+  Check every item against CLAUDE.md before invoking code review:
+  [ ] Module boundary respected (CLAUDE.md §4) — no files outside approved scope
+  [ ] Critical Rules respected (CLAUDE.md §3) — no hardcoded keys, no auto-email, WAL mode
+  [ ] Status machine correct (CLAUDE.md §6) — if state was touched
+  [ ] LLM providers via env var only — never hardcoded model names
+  [ ] v1 preserved modules untouched (CLAUDE.md §9) — ingestor, composer, email_handler
+  [ ] Git format correct (CLAUDE.md §8) — branch feature/phase-XX-slug, commit [PHASE-XX]
+  [ ] Phase task file acceptance criteria met (tasks/PHASE-XX-*.md)
+  If any item fails: fix it now before code review.
+
+STEP C — CODE REVIEW (subagent)
+  Invoke: superpowers:requesting-code-review
+  Provide the reviewer:
+    - Phase number and scope
+    - Relevant CLAUDE.md sections checked above
+    - The pytest output from Step A
+    - The tasks/PHASE-XX acceptance criteria
+  Wait for review report. Fix any BLOCKING issues before proceeding.
+  Advisory issues: note in the task file, do not block commit.
+
+STEP D — REPORT + DIFF
+  Produce a Walkthrough: what was built, key decisions, anything deferred.
+  Run: git diff --staged
+  Show the full diff output.
+
+STEP E — GATE
+  STOP. Present Steps A–D results. Wait for commit approval.
+  Do NOT commit without explicit "approved" or "proceed".
+
+STEP F — COMMIT + PUSH
+  git add <specific files — never git add .>
+  git commit -m "[PHASE-XX] checkpoint: <phase name> - verified"
+  git push
+
+STEP G — ADVANCE
+  Update tasks/PHASE-XX-*.md: Status = DONE, fill PDCA log.
+  Update CLAUDE.md Phase list: mark [DONE].
+  Ask: "Ready for Phase [N+1]?"
+════════════════════════════════════════════════════════════
+'@
+
 # ── Session definitions ───────────────────────────────────────────────────────
 $sessions = @{
 
@@ -536,14 +593,27 @@ Paste traceback and function below:
 # ── List mode ─────────────────────────────────────────────────────────────────
 if ($Session -eq "list") {
     Write-Host ""
-    Write-Host "JobOS Resume Builder v2.0 — Available Sessions" -ForegroundColor Cyan
+    Write-Host "JobOS Resume Builder v2.0 — Session Launcher" -ForegroundColor Cyan
     Write-Host ""
+    Write-Host "  STARTUP ORDER (every session):" -ForegroundColor Yellow
+    Write-Host "    1. .\setup-resume-builder-v2.ps1     <- run first on fresh clone / new machine" -ForegroundColor DarkGray
+    Write-Host "    2. .\jobos-v2-sessions.ps1 -Session list" -ForegroundColor DarkGray
+    Write-Host "    3. .\jobos-v2-sessions.ps1 -Session phase-N" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  AVAILABLE SESSIONS:" -ForegroundColor Yellow
     foreach ($key in ($sessions.Keys | Sort-Object)) {
         $s = $sessions[$key]
         Write-Host "  $($key.PadRight(12)) : $($s.label)" -ForegroundColor Yellow
     }
     Write-Host ""
-    Write-Host "Usage: .\jobos-v2-sessions.ps1 -Session phase-1" -ForegroundColor Green
+    Write-Host "  PROCESS FILES (read before every phase):" -ForegroundColor Yellow
+    Write-Host "    SKILL.md          — full execution protocol" -ForegroundColor DarkGray
+    Write-Host "    pdca-gate.md      — plan/gate/execute/walkthrough discipline" -ForegroundColor DarkGray
+    Write-Host "    git-discipline.md — branch naming + pre-commit diff gate" -ForegroundColor DarkGray
+    Write-Host "    generate-tests.md — /generate-tests workflow" -ForegroundColor DarkGray
+    Write-Host "    session-workflow.md — master workflow setup to go-live" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  Usage: .\jobos-v2-sessions.ps1 -Session phase-1" -ForegroundColor Green
     Write-Host ""
     exit 0
 }
@@ -563,8 +633,12 @@ Write-Host "Model    : $($s.model)" -ForegroundColor DarkGray
 Write-Host "Task     : $($s.task)" -ForegroundColor DarkGray
 Write-Host ""
 
-# Write prompt to temp file to avoid shell escaping issues
+# Write prompt to temp file — append completion protocol for all phase sessions
 $tmpPrompt = "$env:TEMP\jobos_v2_session_prompt.txt"
-$s.prompt | Set-Content $tmpPrompt -Encoding UTF8
+if ($Session -ne "debug") {
+    ($s.prompt + $completionProtocol) | Set-Content $tmpPrompt -Encoding UTF8
+} else {
+    $s.prompt | Set-Content $tmpPrompt -Encoding UTF8
+}
 
 claude --model $s.model --print (Get-Content $tmpPrompt -Raw)
