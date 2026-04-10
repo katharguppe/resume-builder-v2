@@ -98,11 +98,18 @@ Phases (Option B — No Live Editor):
   -> DOWNLOADED (PDF delivered)
   Any state -> ERROR on failure
 
-## 7. Git Format
+## 7. SE Process Rules (READ THESE)
+  pdca-gate.md      — plan artifact → wait → execute → walkthrough → wait → commit
+  git-discipline.md — branch naming, pre-commit diff gate, NEVER auto-commit
+  generate-tests.md — test generation workflow per module (/generate-tests app/module/)
+  SKILL.md          — PRD executor protocol: Orient→Plan→Gate→Execute→Verify→Report→Gate→Advance
+
+## 8. Git Format
   [PHASE-XX] add|fix|refactor|docs|test: what changed
   [PHASE-XX] checkpoint: step name - verified
+  Branch: feature/phase-XX-short-slug (never commit to master directly)
 
-## 8. Preserved from v1 — Do NOT break
+## 9. Preserved from v1 — Do NOT break
   app/ingestor/extractor.py    — text + face photo extraction (headshot heuristic)
   app/ingestor/converter.py    — LibreOffice DOC→PDF conversion
   app/composer/pdf_writer.py   — ReportLab PDF layout (teal headers, HRFlowable)
@@ -112,7 +119,7 @@ Phases (Option B — No Live Editor):
   docker/                      — Dockerfile + docker-compose (LibreOffice)
   tests/                       — 82 passing tests — must stay green
 
-## 9. New Modules to Build (v2 net-new)
+## 10. New Modules to Build (v2 net-new)
   app/auth/          — OTP generation, session tokens, user table
   app/scoring/       — ATS score engine, missing info engine
   app/skills/        — skills grouping + suggestion logic
@@ -125,7 +132,7 @@ Phases (Option B — No Live Editor):
   app/ui/pages/5_Skills.py    — skills builder page
   app/ui/pages/6_Download.py  — payment + download page
 
-## 10. Runtime Cost Reference (per 1,000 candidates)
+## 11. Runtime Cost Reference (per 1,000 candidates)
   Gemini Flash + DeepSeek V3   : ~$9     (default)
   Claude Haiku + Sonnet        : ~$110   (fallback / quality baseline)
   Break-even on Max license    : ~1,700 candidates

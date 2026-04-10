@@ -13,12 +13,21 @@
   memory               : persist phase findings, broken functions list
   sequential-thinking  : architecture design, provider adapter patterns
 
+## SE Process Rules (read before every phase)
+  pdca-gate.md      : Plan artifact → approval → execute → walkthrough → approval → commit
+  git-discipline.md : Branch naming, pre-commit diff gate, NEVER auto-commit
+  generate-tests.md : /generate-tests app/module/ — generate tests after code is done
+  SKILL.md          : PRD executor protocol — Orient → Plan → Gate → Execute → Verify → Report → Gate → Advance
+
+## Startup Order (IMPORTANT)
+  Step 1: .\setup-resume-builder-v2.ps1          <- run FIRST on fresh clone or new machine
+  Step 2: .\jobos-v2-sessions.ps1 -Session list  <- then list sessions
+  Step 3: .\jobos-v2-sessions.ps1 -Session phase-1
+
 ## Session Launcher
   .\jobos-v2-sessions.ps1 -Session list          <- show all sessions
   .\jobos-v2-sessions.ps1 -Session phase-1       <- start Phase 1
-
-## Bootstrap
-  .\setup-resume-builder-v2.ps1                  <- re-run if folders/files missing
+  .\jobos-v2-sessions.ps1 -Session debug         <- debug a single error
 
 ## Docker Commands (require human approval)
   docker-compose -f docker/docker-compose.yml build
