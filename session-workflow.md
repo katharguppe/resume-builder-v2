@@ -7,44 +7,59 @@
 # No step is optional. No gate is skippable.
 # ─────────────────────────────────────────────────────────────────────────────
 
-## Phase 0 — Pre-Session Checklist (run every time before opening Claude Code)
+## Phase 0 — Pre-Session Checklist
 
-### 0.1 Environment
+### 0.1 Every Session (takes ~1 minute)
   [ ] cd D:\staging\resume-builder-v2
-  [ ] git pull origin master          (get latest from remote)
-  [ ] git status                       (confirm clean working tree)
-  [ ] Check .env exists and is populated:
+  [ ] git pull origin master             (get latest from remote)
+  [ ] git status                          (confirm clean working tree)
+  [ ] Confirm .env exists (don't need to edit it, just confirm it's there)
+
+### 0.2 First Time / Fresh Clone Only (once per machine — already done)
+  [ ] Copy .env.example to .env and fill all keys:
         GEMINI_API_KEY, DEEPSEEK_API_KEY, ANTHROPIC_API_KEY
         SMTP credentials, ENCRYPTION_KEY
         PAYMENT_PROVIDER + keys (from Phase 10 onwards)
-
-### 0.2 Fresh Clone / New Machine Only
-  [ ] Copy .env.example to .env and fill all keys
   [ ] Run: .\setup-resume-builder-v2.ps1
-        Creates: folders, .mcp.json, .env.example, task stubs, skill files
   [ ] Run: pip install -r requirements.txt
-  [ ] Run: pytest -v   (confirm 82 v1 tests still pass before touching anything)
+  [ ] Run: pytest -v   (confirm 82 v1 baseline tests pass)
+  NOTE: This is already done for your current machine.
 
-### 0.3 Identify Current Phase
-  [ ] Open CLAUDE.md — check Phase list, find first [PENDING]
-  [ ] Open tasks/PHASE-XX-*.md — read Status and open questions
-  [ ] If previous session left unfinished work: finish that before starting new phase
+### 0.3 Identify Current Phase (every session)
+  [ ] Open CLAUDE.md — find first phase marked [PENDING]
+  [ ] Open that phase's task file — e.g. tasks/PHASE-01-auth-otp-accounts-session-management.md
+  [ ] Read Status and any open questions from last session
+  [ ] If previous session left unfinished work: finish that before starting a new phase
 
 ---
 
 ## Phase 1 — Session Start
 
 ### 1.1 Create Feature Branch
-  git checkout -b feature/phase-XX-short-slug
+  Replace NN with the phase number you are starting, e.g. 01, 02 ... 12
+  Replace slug with a short description of the phase, e.g. auth-otp, ats-score
+
+  git checkout -b feature/phase-NN-slug
+
+  Examples:
+    git checkout -b feature/phase-01-auth-otp
+    git checkout -b feature/phase-02-upload-parse
+    git checkout -b feature/phase-03-ats-score
   (Never work on master directly — see git-discipline.md)
 
 ### 1.2 Launch Claude Code Session
-  .\jobos-v2-sessions.ps1 -Session phase-X
+  Replace N with the phase number: 1, 2, 3 ... 12
+
+  .\jobos-v2-sessions.ps1 -Session phase-N
+
+  Examples:
+    .\jobos-v2-sessions.ps1 -Session phase-1
+    .\jobos-v2-sessions.ps1 -Session phase-2
 
 ### 1.3 Orient (Claude does this — verify it does)
   Claude should:
   [ ] Read CLAUDE.md and state the phase number + scope
-  [ ] Read tasks/PHASE-XX-*.md and state current status
+  [ ] Read the phase task file (e.g. tasks/PHASE-01-auth-otp-accounts-session-management.md)
   [ ] Confirm which v1 modules are reused vs net-new
   If Claude skips this: type "orient first"
 
@@ -227,29 +242,34 @@
 | pdca-gate.md          | Plan → gate → execute → walkthrough → commit |
 | git-discipline.md     | Branch naming, pre-commit diff gate          |
 | generate-tests.md     | /generate-tests workflow                     |
-| tasks/PHASE-XX-*.md   | Per-phase objective and PDCA log             |
+| tasks/PHASE-01-*.md … PHASE-12-*.md | Per-phase objective and PDCA log |
 | session-workflow.md   | This file                                    |
 
 ## Quick Reference — Commands Every Session
 
 ```powershell
-# Pre-session
+# Pre-session (every session — replace NN and slug with actual values)
 git pull origin master
-git checkout -b feature/phase-XX-slug
+git checkout -b feature/phase-NN-slug
+# e.g. git checkout -b feature/phase-01-auth-otp
+#      git checkout -b feature/phase-02-upload-parse
 
-# Run session
-.\jobos-v2-sessions.ps1 -Session phase-X
+# Launch session (replace N with actual phase number: 1 through 12)
+.\jobos-v2-sessions.ps1 -Session phase-N
+# e.g. .\jobos-v2-sessions.ps1 -Session phase-1
 
-# Test (run before every commit)
+# Test (run before every commit — must be all green)
 pytest -v
 
-# Generate tests after implementation
-# (say this inside Claude Code session)
-/generate-tests app/<module>/
+# Generate tests after implementation (type inside Claude Code session)
+/generate-tests app/auth/       # Phase 1
+/generate-tests app/scoring/    # Phase 3
+/generate-tests app/payment/    # Phase 10
+# etc.
 
-# Check diff before commit (Claude shows this — verify it)
+# Review diff before commit (Claude shows this — you verify it)
 git diff --staged
 
-# Post-session
-git push origin feature/phase-XX-slug
+# Post-session push (replace NN and slug with actual branch name)
+git push origin feature/phase-NN-slug
 ```
