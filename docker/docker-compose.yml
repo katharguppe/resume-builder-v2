@@ -1,0 +1,45 @@
+version: '3.9'
+
+services:
+  resume-finetuner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+
+    container_name: resume-finetuner
+
+    ports:
+      - '8501:8501'
+
+    volumes:
+      # Source folder: copy SOURCE_FOLDER from .env or set via docker-compose override
+      # Example: SOURCE_FOLDER=/path/to/jobs -> /app/input (read-only)
+      - '${SOURCE_FOLDER}:/app/input:ro'
+
+      # Destination folder: copy DEST_FOLDER from .env -> /app/output (write)
+      - '${DEST_FOLDER}:/app/output'
+
+      # SQLite database with WAL mode enabled (requires PRAGMA journal_mode=WAL in app/state/db.py)
+      # WAL mode uses resume_tuner.db, resume_tuner.db-wal, and resume_tuner.db-shm files
+      - '${PWD}/resume_tuner.db:/app/resume_tuner.db'
+
+    env_file:
+      - ../.env
+
+    environment:
+      # Set log level for debugging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Force SQLite to use directory with proper permissions for WAL files
+      SQLALCHEMY_SILENCE_UBER_WARNING: 1
+      # LibreOffice is installed via apt inside Docker and available on PATH as 'soffice'
+      LIBREOFFICE_PATH: soffice
+
+    restart: unless-stopped
+
+    # Health check via exposed port (relies on Dockerfile HEALTHCHECK)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

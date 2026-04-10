@@ -1,0 +1,7 @@
+.env
+*.db
+photos/
+converted/
+__pycache__/
+*.pyc
+.worktrees/
