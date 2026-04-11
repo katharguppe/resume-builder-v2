@@ -96,3 +96,17 @@ def test_wal_mode_enabled(auth_db):
     with auth_db._get_connection() as conn:
         result = conn.execute("PRAGMA journal_mode").fetchone()
         assert result[0] == "wal"
+
+
+def test_config_has_smtp_and_otp_fields():
+    from app.config import Config
+    cfg = Config()
+    assert hasattr(cfg, "SMTP_HOST")
+    assert hasattr(cfg, "SMTP_PORT")
+    assert hasattr(cfg, "SMTP_USER")
+    assert hasattr(cfg, "SMTP_PASSWORD_ENCRYPTED")
+    assert hasattr(cfg, "OTP_EXPIRY_MINUTES")
+    assert hasattr(cfg, "SESSION_EXPIRY_HOURS")
+    assert cfg.SMTP_PORT == 587        # default
+    assert cfg.OTP_EXPIRY_MINUTES == 10
+    assert cfg.SESSION_EXPIRY_HOURS == 24
