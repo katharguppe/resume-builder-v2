@@ -16,19 +16,19 @@ BEFORE touching any file:
 ## 1. Current Phase: 0 - SETUP COMPLETE. Begin Phase 1.
 v1 foundation ported. All 12 phases queued below.
 
-Phases (Option B — No Live Editor):
-  1  -> Auth              — OTP accounts, session management         [PENDING]
-  2  -> Upload/Parse      — resume + JD upload, port from v1        [PENDING]
-  3  -> ATS Score Engine  — batch scoring, keyword/skills/structure  [PENDING]
-  4  -> Review Page       — read-only output + accept/reject         [PENDING]
-  5  -> Revision Request  — re-run LLM up to 3x per session         [PENDING]
-  6  -> Missing Info      — severity-ranked panel (High/Med/Low)     [PENDING]
-  7  -> Skills Builder    — grouped suggest + edit (Core/Tools/Func) [PENDING]
-  8  -> Personalization   — experience level + function + tone       [PENDING]
-  9  -> Variation Engine  — anti-repetition phrase rotation          [PENDING]
-  10 -> Payment Gate      — payment + locked download                [PENDING]
-  11 -> Quality Check     — pre-output validation layer              [PENDING]
-  12 -> Integration/E2E   — extend v1 test suite                    [PENDING]
+Phases (Option B - No Live Editor):
+  1  -> Auth              - OTP accounts, session management         [PENDING]
+  2  -> Upload/Parse      - resume + JD upload, port from v1        [PENDING]
+  3  -> ATS Score Engine  - batch scoring, keyword/skills/structure  [PENDING]
+  4  -> Review Page       - read-only output + accept/reject         [PENDING]
+  5  -> Revision Request  - re-run LLM up to 3x per session         [PENDING]
+  6  -> Missing Info      - severity-ranked panel (High/Med/Low)     [PENDING]
+  7  -> Skills Builder    - grouped suggest + edit (Core/Tools/Func) [PENDING]
+  8  -> Personalization   - experience level + function + tone       [PENDING]
+  9  -> Variation Engine  - anti-repetition phrase rotation          [PENDING]
+  10 -> Payment Gate      - payment + locked download                [PENDING]
+  11 -> Quality Check     - pre-output validation layer              [PENDING]
+  12 -> Integration/E2E   - extend v1 test suite                    [PENDING]
 
 ## 2. Stack
   Language          : Python 3.13
@@ -43,19 +43,19 @@ Phases (Option B — No Live Editor):
   PDF write         : reportlab + PyMuPDF
   ATS scoring       : in-process Python (keyword/skills/structure, no LLM)
   Web search        : duckduckgo-search (best practice retrieval)
-  Email             : smtplib — OTP delivery + MANUAL send trigger only
-  State             : SQLite WAL mode — resume_builder.db
+  Email             : smtplib - OTP delivery + MANUAL send trigger only
+  State             : SQLite WAL mode - resume_builder.db
   Config            : python-dotenv via .env
-  Payment           : Razorpay (India) or Stripe — pluggable via PAYMENT_PROVIDER env var
+  Payment           : Razorpay (India) or Stripe - pluggable via PAYMENT_PROVIDER env var
 
 ## 3. Critical Rules
   - LLM must NOT hallucinate facts. Rewrite tone/keywords only.
   - No live editor. UX = Submit → Wait (~5-10s) → Review → Revise (3x) → Download.
   - Email send: MANUAL trigger only (OTP delivery is automatic, resume send is manual).
-  - LibreOffice runs inside Docker — NOT on host machine.
+  - LibreOffice runs inside Docker - NOT on host machine.
   - SQLite uses WAL mode.
   - ATS score computed in-process, NOT via LLM call.
-  - Provider switch via env var only — no code changes to swap models.
+  - Provider switch via env var only - no code changes to swap models.
   - Payment gate: download locked until payment_confirmed = true in DB.
   - Revision cap: max 3 revisions per session (enforced in DB + UI).
   - No exaggeration: LLM rewrites tone/keywords only, never invents facts.
@@ -75,7 +75,7 @@ Phases (Option B — No Live Editor):
   Session -> phase-12  : tests/ only
   Session -> debug     : one error + one file per session
 
-## 5. LLM Interface (v2 — provider-agnostic)
+## 5. LLM Interface (v2 - provider-agnostic)
   extract_fields(resume_text)                          -> uses EXTRACT provider
   score_resume(resume_fields, jd_fields)               -> in-process, no LLM
   rewrite_resume(resume_text, jd_text, best_practice,
@@ -83,7 +83,7 @@ Phases (Option B — No Live Editor):
   validate_quality(resume_draft)                       -> uses REWRITE provider
   All adapters in app/llm/finetuner.py.
   Provider routing in app/llm/provider.py (new).
-  Models from .env — never hardcoded.
+  Models from .env - never hardcoded.
 
 ## 6. Status Machine v2.0
   PENDING
@@ -99,38 +99,38 @@ Phases (Option B — No Live Editor):
   Any state -> ERROR on failure
 
 ## 7. SE Process Rules (READ THESE)
-  pdca-gate.md      — plan artifact → wait → execute → walkthrough → wait → commit
-  git-discipline.md — branch naming, pre-commit diff gate, NEVER auto-commit
-  generate-tests.md — test generation workflow per module (/generate-tests app/module/)
-  SKILL.md          — PRD executor protocol: Orient→Plan→Gate→Execute→Verify→Report→Gate→Advance
+  pdca-gate.md      - plan artifact → wait → execute → walkthrough → wait → commit
+  git-discipline.md - branch naming, pre-commit diff gate, NEVER auto-commit
+  generate-tests.md - test generation workflow per module (/generate-tests app/module/)
+  SKILL.md          - PRD executor protocol: Orient→Plan→Gate→Execute→Verify→Report→Gate→Advance
 
 ## 8. Git Format
   [PHASE-XX] add|fix|refactor|docs|test: what changed
   [PHASE-XX] checkpoint: step name - verified
   Branch: feature/phase-XX-short-slug (never commit to master directly)
 
-## 9. Preserved from v1 — Do NOT break
-  app/ingestor/extractor.py    — text + face photo extraction (headshot heuristic)
-  app/ingestor/converter.py    — LibreOffice DOC→PDF conversion
-  app/composer/pdf_writer.py   — ReportLab PDF layout (teal headers, HRFlowable)
-  app/composer/photo_handler.py — face photo crop and embed
-  app/best_practice/           — DuckDuckGo web search + loader
-  app/email_handler/           — Fernet crypto + manual send + templates
-  docker/                      — Dockerfile + docker-compose (LibreOffice)
-  tests/                       — 82 passing tests — must stay green
+## 9. Preserved from v1 - Do NOT break
+  app/ingestor/extractor.py    - text + face photo extraction (headshot heuristic)
+  app/ingestor/converter.py    - LibreOffice DOC→PDF conversion
+  app/composer/pdf_writer.py   - ReportLab PDF layout (teal headers, HRFlowable)
+  app/composer/photo_handler.py - face photo crop and embed
+  app/best_practice/           - DuckDuckGo web search + loader
+  app/email_handler/           - Fernet crypto + manual send + templates
+  docker/                      - Dockerfile + docker-compose (LibreOffice)
+  tests/                       - 82 passing tests - must stay green
 
 ## 10. New Modules to Build (v2 net-new)
-  app/auth/          — OTP generation, session tokens, user table
-  app/scoring/       — ATS score engine, missing info engine
-  app/skills/        — skills grouping + suggestion logic
-  app/payment/       — payment provider adapter (Razorpay/Stripe)
-  app/llm/provider.py         — provider routing (Gemini/DeepSeek/Claude)
-  app/llm/variation_engine.py — anti-repetition phrase rotation
-  app/llm/quality_check.py    — pre-output validation
-  app/ui/pages/3_Review.py    — candidate review page
-  app/ui/pages/4_Revise.py    — revision request page
-  app/ui/pages/5_Skills.py    — skills builder page
-  app/ui/pages/6_Download.py  — payment + download page
+  app/auth/          - OTP generation, session tokens, user table
+  app/scoring/       - ATS score engine, missing info engine
+  app/skills/        - skills grouping + suggestion logic
+  app/payment/       - payment provider adapter (Razorpay/Stripe)
+  app/llm/provider.py         - provider routing (Gemini/DeepSeek/Claude)
+  app/llm/variation_engine.py - anti-repetition phrase rotation
+  app/llm/quality_check.py    - pre-output validation
+  app/ui/pages/3_Review.py    - candidate review page
+  app/ui/pages/4_Revise.py    - revision request page
+  app/ui/pages/5_Skills.py    - skills builder page
+  app/ui/pages/6_Download.py  - payment + download page
 
 ## 11. Runtime Cost Reference (per 1,000 candidates)
   Gemini Flash + DeepSeek V3   : ~$9     (default)

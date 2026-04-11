@@ -19,7 +19,7 @@
   - `[PHASE-01] add: OTP generation and session table`
   - `[PHASE-03] fix: ATS keyword match edge case for short JDs`
   - `[PHASE-09] add: variation engine banned phrase list`
-- One logical change per commit — do not bundle unrelated changes.
+- One logical change per commit - do not bundle unrelated changes.
 - Checkpoint commits: `[PHASE-XX] checkpoint: step name - verified`
 
 ## Pre-Commit Gate (ALWAYS)

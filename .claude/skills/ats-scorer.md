@@ -3,7 +3,7 @@
 # Design or implement one section of the ATS scoring engine.
 
 ## Scope
-app/scoring/ only. No LLM calls â€” pure Python keyword/skills/structure scoring.
+app/scoring/ only. No LLM calls - pure Python keyword/skills/structure scoring.
 
 ## Steps
 1. Ask: which score component? (keyword-match | skills-coverage | experience-clarity | structure-completeness)

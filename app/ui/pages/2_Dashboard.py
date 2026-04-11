@@ -38,7 +38,7 @@ if "active_candidate_dialog" not in st.session_state:
 
 @st.cache_data(ttl=30)
 def _load_candidates(db_path_str: str) -> list[dict]:
-    """Cached DB query — returns all candidates as plain dicts, newest first."""
+    """Cached DB query - returns all candidates as plain dicts, newest first."""
     _db = StateDB(Path(db_path_str))
     with _db._get_connection() as conn:
         cursor = conn.cursor()
@@ -58,13 +58,13 @@ def _do_send_email(cand_id: int, status: str, db: StateDB, config) -> None:
     if status == CandidateStatus.PAYMENT_CONFIRMED.value:
         ok = send_final_pdf_email(candidate, config)
         if not ok:
-            raise RuntimeError("Email send failed — check SMTP config.")
+            raise RuntimeError("Email send failed - check SMTP config.")
         db.set_status(cand_id, CandidateStatus.OUTPUT_SENT)
         db.update_candidate(cand_id, {"output_sent_at": time.strftime('%Y-%m-%d %H:%M:%S')})
     else:
         ok = send_outreach_email(candidate, config)
         if not ok:
-            raise RuntimeError("Email send failed — check SMTP config.")
+            raise RuntimeError("Email send failed - check SMTP config.")
         db.set_status(cand_id, CandidateStatus.EMAIL_SENT)
         db.update_candidate(cand_id, {"email_sent_at": time.strftime('%Y-%m-%d %H:%M:%S')})
 
@@ -83,7 +83,7 @@ def _email_dialog(cand_id: int, status: str, db_path_str: str) -> None:
     email_addr = _cand.candidate_email or "(no email on record)"
     st.write(f"Send email to **{email_addr}**?")
 
-    # Show which template will be used — disabled (content determined by status in templates.py)
+    # Show which template will be used - disabled (content determined by status in templates.py)
     if status in (CandidateStatus.HAPPY_PATH.value, CandidateStatus.MISSING_DETAILS.value):
         _default_tmpl = "Happy Path" if status == CandidateStatus.HAPPY_PATH.value else "Missing Details"
         st.selectbox(
@@ -106,7 +106,7 @@ def _email_dialog(cand_id: int, status: str, db_path_str: str) -> None:
         st.rerun()
 
 
-# Send Email checkbox — eligible statuses only, never pre-checked
+# Send Email checkbox - eligible statuses only, never pre-checked
 _EMAIL_ELIGIBLE = {
     CandidateStatus.HAPPY_PATH.value,
     CandidateStatus.MISSING_DETAILS.value,
@@ -189,7 +189,7 @@ else:
         c1.write(row["candidate_name"] or row["source_filename"])
         c2.write(row["source_filename"])
         c3.write(status)
-        c4.write(row["email_sent_at"] or "—")
+        c4.write(row["email_sent_at"] or "-")
 
         with c5:
             if status == CandidateStatus.MISSING_DETAILS.value:
@@ -217,7 +217,7 @@ else:
                 err = (row.get("error_message") or "Unknown error")[:120]
                 st.error(err)
 
-            # Send Email checkbox — eligible statuses only, never pre-checked
+            # Send Email checkbox - eligible statuses only, never pre-checked
             if status in _EMAIL_ELIGIBLE:
                 if st.checkbox("Send Email", key=f"chk_email_{cand_id}", value=False):
                     # Reset checkbox in session_state before opening dialog
@@ -225,7 +225,7 @@ else:
                     st.session_state[f"chk_email_{cand_id}"] = False
                     _email_dialog(cand_id, status, str(db_path))
 
-        # Fill-missing-details form — shown inline below the row when active
+        # Fill-missing-details form - shown inline below the row when active
         if st.session_state.active_candidate_dialog == cand_id:
             st.markdown("### Provide Missing Details")
             try:

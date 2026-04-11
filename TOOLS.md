@@ -16,8 +16,8 @@
 ## SE Process Rules (read before every phase)
   pdca-gate.md      : Plan artifact → approval → execute → walkthrough → approval → commit
   git-discipline.md : Branch naming, pre-commit diff gate, NEVER auto-commit
-  generate-tests.md : /generate-tests app/module/ — generate tests after code is done
-  SKILL.md          : PRD executor protocol — Orient → Plan → Gate → Execute → Verify → Report → Gate → Advance
+  generate-tests.md : /generate-tests app/module/ - generate tests after code is done
+  SKILL.md          : PRD executor protocol - Orient → Plan → Gate → Execute → Verify → Report → Gate → Advance
 
 ## Startup Order (IMPORTANT)
   Step 1: .\setup-resume-builder-v2.ps1          <- run FIRST on fresh clone or new machine

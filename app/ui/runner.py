@@ -33,7 +33,7 @@ def _find_resumes_dir(source_folder: Path) -> Path:
     for sub in subfolders:
         if sub.name.lower() == "resumes":
             return sub
-    # Priority 2: exactly one subfolder — use it
+    # Priority 2: exactly one subfolder - use it
     if len(subfolders) == 1:
         return subfolders[0]
     # Priority 3: fallback to source root
@@ -56,7 +56,7 @@ class BatchRunner(threading.Thread):
         
     def discover_files(self, db: StateDB, config) -> None:
         if not config.source_folder:
-            logger.error("source_folder is not set in config — cannot discover files.")
+            logger.error("source_folder is not set in config - cannot discover files.")
             return
         source_folder = Path(config.source_folder)
         resumes_dir = _find_resumes_dir(source_folder)
@@ -162,7 +162,7 @@ class BatchRunner(threading.Thread):
                     "output_pdf_path": str(output_pdf)
                 })
                 
-                # 5. Determine status — email is sent manually via recruiter checkbox in dashboard
+                # 5. Determine status - email is sent manually via recruiter checkbox in dashboard
                 if not missing:
                     db.set_status(candidate.id, CandidateStatus.HAPPY_PATH)
                 else:

@@ -2,7 +2,7 @@
 Shared pytest fixtures for the resume_finetuner test suite.
 
 Fixtures here are auto-discovered by pytest and available in ALL test files.
-External I/O (LibreOffice, Gemini, SMTP) is mocked per-test — conftest only
+External I/O (LibreOffice, Gemini, SMTP) is mocked per-test - conftest only
 sets up file-system and DB state.
 """
 import io
@@ -52,8 +52,8 @@ def source_folder(tmp_path: Path) -> Path:
         "in FastAPI, PostgreSQL, and cloud deployments.",
         encoding="utf-8",
     )
-    _make_simple_pdf(resumes / "happy_resume.pdf", "John Doe – happy path resume")
-    _make_simple_pdf(resumes / "missing_resume.pdf", "Jane Smith – missing fields resume")
+    _make_simple_pdf(resumes / "happy_resume.pdf", "John Doe - happy path resume")
+    _make_simple_pdf(resumes / "missing_resume.pdf", "Jane Smith - missing fields resume")
 
     return src
 
@@ -74,7 +74,7 @@ def dest_folder(tmp_path: Path) -> Path:
 def configured_db(tmp_path: Path, source_folder: Path, dest_folder: Path):
     """
     Return a (StateDB, db_path) tuple that already has a full recruiter config
-    saved.  SMTP password is stored as a plain string here — the runner's
+    saved.  SMTP password is stored as a plain string here - the runner's
     decrypt_password call is mocked in each E2E test.
     """
     db_path = tmp_path / "resume_tuner.db"

@@ -100,7 +100,7 @@ Write-Host ""
 Write-Host "[ 3/7 ] Writing .env.example..." -ForegroundColor Yellow
 @"
 # ==============================================================================
-# JobOS Resume Builder v2.0 — Environment Variables
+# JobOS Resume Builder v2.0 - Environment Variables
 # Copy this to .env and fill in all values before running.
 # ==============================================================================
 
@@ -117,7 +117,7 @@ GEMINI_EXTRACT_MODEL=gemini-2.0-flash
 DEEPSEEK_API_KEY=your-deepseek-api-key-here
 DEEPSEEK_REWRITE_MODEL=deepseek-chat
 
-# Claude (fallback — keep populated for quality recovery)
+# Claude (fallback - keep populated for quality recovery)
 ANTHROPIC_API_KEY=sk-ant-your-key-here
 LLM_REWRITE_MODEL=claude-sonnet-4-6
 LLM_EXTRACT_MODEL=claude-haiku-4-5-20251001
@@ -136,7 +136,7 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASSWORD_ENCRYPTED=           # Use crypto.py to encrypt raw password
-ENCRYPTION_KEY=                    # Fernet key — generate once, never regenerate
+ENCRYPTION_KEY=                    # Fernet key - generate once, never regenerate
 
 # ── Payment ────────────────────────────────────────────────────────────────────
 # Provider: "razorpay" | "stripe"
@@ -236,7 +236,7 @@ Write-Host "[ 6/7 ] Writing skill files..." -ForegroundColor Yellow
 
 ## Available Skills
   task-create       : Create new PHASE-XX task file with PDCA template
-  audit-module      : Audit one module, report only — NO code changes
+  audit-module      : Audit one module, report only - NO code changes
   add-test          : Add pytest test for a fixed or new function
   ats-scorer        : Design/implement ATS scoring logic for a section
   personalization   : Apply experience-level + function-type rewrite rules
@@ -301,7 +301,7 @@ Write-Host "[ 6/7 ] Writing skill files..." -ForegroundColor Yellow
 # Design or implement one section of the ATS scoring engine.
 
 ## Scope
-app/scoring/ only. No LLM calls — pure Python keyword/skills/structure scoring.
+app/scoring/ only. No LLM calls - pure Python keyword/skills/structure scoring.
 
 ## Steps
 1. Ask: which score component? (keyword-match | skills-coverage | experience-clarity | structure-completeness)
@@ -327,7 +327,7 @@ app/llm/prompt_builder.py only.
 ## Steps
 1. Read current app/llm/prompt_builder.py
 2. Identify which level/function is missing or weak
-3. Propose prompt additions — no fabrication, no over-positioning
+3. Propose prompt additions - no fabrication, no over-positioning
 4. Wait for human approval
 5. Implement and add test
 "@ | Set-Content "$PROJECT_ROOT\.claude\skills\personalization.md" -Encoding UTF8
@@ -345,7 +345,7 @@ app/llm/variation_engine.py only.
 - Maintain a banned-phrase list (cliches to avoid)
 - Maintain synonym groups (rotate phrasing across candidates)
 - Post-process LLM output to detect and replace repeated phrases
-- Never change facts — only rephrase
+- Never change facts - only rephrase
 
 ## Steps
 1. Read app/llm/variation_engine.py current state

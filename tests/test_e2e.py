@@ -1,7 +1,7 @@
 """
 tests/test_e2e.py
 ─────────────────────────────────────────────────────────────────────────────
-TASK-009 — Integration & End-to-End Tests  (Phase 8)
+TASK-009 - Integration & End-to-End Tests  (Phase 8)
 
 These tests exercise the *full pipeline* through BatchRunner without hitting
 any real external services.  All Gemini, SMTP, LibreOffice, and crypto calls
@@ -110,7 +110,7 @@ MISSING_LLM_OUTPUT = {
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test 1 — Happy Path (PRD F5, F6, F7, F8, F9)
+# Test 1 - Happy Path (PRD F5, F6, F7, F8, F9)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_e2e_happy_path(tmp_path):
@@ -156,7 +156,7 @@ def test_e2e_happy_path(tmp_path):
     # PDF written to disk
     assert output_pdf.exists()
 
-    # Email NOT auto-sent — manual trigger only
+    # Email NOT auto-sent - manual trigger only
     mock_send.assert_not_called()
 
     # Checkpoint recorded
@@ -168,7 +168,7 @@ def test_e2e_happy_path(tmp_path):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test 2 — Missing Details Path (PRD F5, F6, F7, F10)
+# Test 2 - Missing Details Path (PRD F5, F6, F7, F10)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_e2e_missing_details_path(tmp_path):
@@ -210,12 +210,12 @@ def test_e2e_missing_details_path(tmp_path):
     assert "Phone" in missing
     assert "LinkedIn" in missing
 
-    # Email NOT auto-sent — manual trigger only
+    # Email NOT auto-sent - manual trigger only
     mock_send.assert_not_called()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test 3 — Checkpoint Resume (PRD F8)
+# Test 3 - Checkpoint Resume (PRD F8)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_e2e_checkpoint_resume(tmp_path):
@@ -259,7 +259,7 @@ def test_e2e_checkpoint_resume(tmp_path):
     first_batch_number = cp1.batch_number  # should be 1
 
     # One candidate processed; beta.pdf not yet in DB (discover only adds
-    # when runner starts — so beta is discovered fresh in Run 2)
+    # when runner starts - so beta is discovered fresh in Run 2)
     with db._get_connection() as conn:
         rows = conn.execute("SELECT status FROM candidates").fetchall()
     # alpha was processed (HAPPY_PATH); only 1 row because batch_size=1
@@ -288,7 +288,7 @@ def test_e2e_checkpoint_resume(tmp_path):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test 4 — Payment Confirmed → Send Resume (PRD F11, F12)
+# Test 4 - Payment Confirmed → Send Resume (PRD F11, F12)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_e2e_payment_and_send(tmp_path):
@@ -296,7 +296,7 @@ def test_e2e_payment_and_send(tmp_path):
     Manually advance a candidate through AWAITING_PAYMENT → PAYMENT_CONFIRMED,
     then call send_final_pdf_email and assert OUTPUT_SENT is set.
 
-    Covers Feature 12 (auto-regenerate path) — the UI's Send Resume button
+    Covers Feature 12 (auto-regenerate path) - the UI's Send Resume button
     does exactly this sequence.
     """
     src, dst = _make_src(tmp_path, ["resume.pdf"])
@@ -330,7 +330,7 @@ def test_e2e_payment_and_send(tmp_path):
     candidate = db.get_candidate(cid)
     config = db.get_config()
 
-    # Mock SMTP and crypto — no real connection
+    # Mock SMTP and crypto - no real connection
     with (
         patch("app.email_handler.sender.decrypt_password", return_value="plain_pass"),
         patch("app.email_handler.sender._get_smtp_connection") as mock_smtp,
@@ -352,7 +352,7 @@ def test_e2e_payment_and_send(tmp_path):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test 5 — Error Path: bad file → ERROR, batch continues (PRD F3, F7)
+# Test 5 - Error Path: bad file → ERROR, batch continues (PRD F3, F7)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_e2e_error_path(tmp_path):
@@ -361,7 +361,7 @@ def test_e2e_error_path(tmp_path):
 
     Asserts:
     - First candidate status = ERROR, error_message populated
-    - Batch does NOT crash — second candidate is processed (HAPPY_PATH)
+    - Batch does NOT crash - second candidate is processed (HAPPY_PATH)
     - Checkpoint written for both candidates
     """
     src, dst = _make_src(tmp_path, ["bad_resume.pdf", "good_resume.pdf"])
@@ -375,7 +375,7 @@ def test_e2e_error_path(tmp_path):
     def _extract_side_effect(*args, **kwargs):
         call_count["n"] += 1
         if call_count["n"] == 1:
-            raise RuntimeError("Corrupted PDF — cannot extract text")
+            raise RuntimeError("Corrupted PDF - cannot extract text")
         return {"text": "Second candidate resume text", "photo_bytes": None}
 
     with (

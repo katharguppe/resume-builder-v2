@@ -114,7 +114,7 @@ if saved and saved.best_practice_paths:
         bp_default = ""
 
 bp_paths = st.text_area(
-    "Best Practice Resume Paths (Optional — one path per line)",
+    "Best Practice Resume Paths (Optional - one path per line)",
     value=bp_default
 )
 
@@ -186,7 +186,7 @@ if st.button("💾 Save Configuration", type="primary"):
         with st.spinner("Saving configuration…"):
             env_path = Path(os.getcwd()) / ".env"
 
-            # Encryption key — generate once
+            # Encryption key - generate once
             load_dotenv(dotenv_path=env_path)
             enc_key_str = os.getenv("ENCRYPTION_KEY")
             if not enc_key_str:

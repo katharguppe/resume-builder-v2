@@ -1,5 +1,5 @@
 # pdca-gate.md
-# Workspace Rule: PDCA Gate — Plan Before Execute
+# Workspace Rule: PDCA Gate - Plan Before Execute
 # Applies to every session in this workspace.
 # ─────────────────────────────────────────────────────────────────────────────
 

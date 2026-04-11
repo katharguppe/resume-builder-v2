@@ -11,6 +11,6 @@ app/llm/prompt_builder.py only.
 ## Steps
 1. Read current app/llm/prompt_builder.py
 2. Identify which level/function is missing or weak
-3. Propose prompt additions â€” no fabrication, no over-positioning
+3. Propose prompt additions - no fabrication, no over-positioning
 4. Wait for human approval
 5. Implement and add test

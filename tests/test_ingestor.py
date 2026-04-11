@@ -205,11 +205,11 @@ def test_headshot_candidate_rejects_small_height_only():
     assert _is_headshot_candidate({"width": 200, "height": 79, "smask": 0}) is False
 
 def test_headshot_candidate_rejects_wide_logo():
-    # aspect 5.0 — typical wide logo
+    # aspect 5.0 - typical wide logo
     assert _is_headshot_candidate({"width": 400, "height": 80, "smask": 0}) is False
 
 def test_headshot_candidate_rejects_tall_narrow():
-    # aspect 0.2 — tall narrow image
+    # aspect 0.2 - tall narrow image
     assert _is_headshot_candidate({"width": 80, "height": 400, "smask": 0}) is False
 
 def test_headshot_candidate_rejects_transparent():

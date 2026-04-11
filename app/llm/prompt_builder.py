@@ -4,7 +4,7 @@ def build_extraction_prompt(resume_text: str) -> str:
     """
     return f"""Extract the candidate's name, email address, and phone number from the resume below.
 
-Respond ONLY with valid JSON — no markdown, no explanation:
+Respond ONLY with valid JSON - no markdown, no explanation:
 {{"candidate_name": "string", "email": "string", "phone": "string"}}
 
 Use empty string "" for any field not found in the resume.
@@ -36,15 +36,15 @@ CANDIDATE NAME: {candidate_name}
 Rewrite the candidate's resume to align tightly with the JD.
 
 Rules for every bullet point:
-1. Use the EXACT phrasing from the JD wherever possible — if the JD says
+1. Use the EXACT phrasing from the JD wherever possible - if the JD says
    "admissions management", write "admissions management", not "student
    intake coordination".
 2. Within each role, put the bullet most directly relevant to the JD first.
-3. Do not fabricate facts. Rephrase and reorder only — never invent experience,
+3. Do not fabricate facts. Rephrase and reorder only - never invent experience,
    dates, companies, or qualifications not present in the source resume.
 
 === CRITICAL CONSTRAINT ===
-Do not invent, fabricate, or add any experience, qualifications, dates, or companies that are not present in the source resume text. You may rephrase, reorder, and reformat — but you must not add facts.
+Do not invent, fabricate, or add any experience, qualifications, dates, or companies that are not present in the source resume text. You may rephrase, reorder, and reformat - but you must not add facts.
 
 If a piece of information (such as phone number, email, linkedin, etc) is not in the source resume, you must leave it blank in the relevant field and list it in the `missing_fields` output array.
 
@@ -53,11 +53,11 @@ You must respond with ONLY valid JSON matching this schema exactly. No markdown 
 {{
   "candidate_name": "{candidate_name}",
   "contact": {{ "email": "string", "phone": "string", "linkedin": "string" }},
-  "summary": "string — 3-4 lines, JD-aligned",
+  "summary": "string - 3-4 lines, JD-aligned",
   "experience": [ {{ "title": "string", "company": "string", "dates": "string", "bullets": ["string"] }} ],
   "education": [ {{ "degree": "string", "institution": "string", "year": "string" }} ],
   "skills": ["string"],
-  "missing_fields": ["string — any field that was blank or unclear in source resume"]
+  "missing_fields": ["string - any field that was blank or unclear in source resume"]
 }}
 """
     return prompt.strip()

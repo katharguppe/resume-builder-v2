@@ -160,7 +160,7 @@ def test_runner_does_not_auto_send_email(
     mock_send, mock_pdf, mock_tune, mock_extract,
     mock_jd, temp_db
 ):
-    """BatchRunner must never call send_outreach_email — email is manual only."""
+    """BatchRunner must never call send_outreach_email - email is manual only."""
     db, db_path, tmp_path = temp_db
 
     mock_jd.return_value = "Mock JD"
@@ -190,7 +190,7 @@ def test_runner_does_not_auto_send_email(
 def test_runner_does_not_pre_decrypt_smtp_password(
     mock_pdf, mock_tune, mock_extract, mock_jd, temp_db
 ):
-    """BatchRunner must not call decrypt_password — decryption belongs to sender.py only."""
+    """BatchRunner must not call decrypt_password - decryption belongs to sender.py only."""
     db, db_path, tmp_path = temp_db
 
     mock_jd.return_value = "Mock JD"
@@ -209,7 +209,7 @@ def test_runner_does_not_pre_decrypt_smtp_password(
 
     import app.ui.runner as runner_module
     assert not hasattr(runner_module, 'decrypt_password'), \
-        "decrypt_password must not be imported in runner — decryption belongs to sender.py only"
+        "decrypt_password must not be imported in runner - decryption belongs to sender.py only"
 
 
 def test_payment_confirmed_can_reach_output_sent():

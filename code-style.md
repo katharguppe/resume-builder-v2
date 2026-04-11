@@ -6,11 +6,11 @@
 ## Language-Agnostic Rules
 
 - Every function and class must have a docstring or JSDoc comment.
-- No function longer than 50 lines — split into smaller functions.
-- No magic numbers — use named constants.
-- No hardcoded secrets, connection strings, or API keys — use env vars.
+- No function longer than 50 lines - split into smaller functions.
+- No magic numbers - use named constants.
+- No hardcoded secrets, connection strings, or API keys - use env vars.
 - No commented-out dead code in final commits.
-- All error paths must be explicitly handled — no silent failures.
+- All error paths must be explicitly handled - no silent failures.
 
 ## Python Rules (apply when stack includes Python)
 
@@ -24,17 +24,17 @@
 
 - Prefer TypeScript over plain JavaScript.
 - Use `const` by default; `let` only when reassignment is needed.
-- No `any` type — use proper types or `unknown`.
+- No `any` type - use proper types or `unknown`.
 - Async functions use `async/await`, not raw `.then()` chains.
 
 ## Docker Rules (apply when stack includes Docker)
 
 - Every service must have a health check defined in docker-compose.yml.
-- Never use `latest` tag for base images — pin to a specific version.
+- Never use `latest` tag for base images - pin to a specific version.
 - Secrets go in `.env` file, never in Dockerfile or compose file.
 
 ## Database Rules
 
-- Every schema change requires a migration file — no direct schema edits.
-- All queries must be parameterised — no string interpolation in queries.
+- Every schema change requires a migration file - no direct schema edits.
+- All queries must be parameterised - no string interpolation in queries.
 - Index any field that appears in a WHERE or filter clause.

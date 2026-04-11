@@ -16,7 +16,7 @@ def _parse_json_field(field_str: str, default: Any) -> Any:
 
 def get_outreach_subject(candidate: CandidateRecord) -> str:
     jd_title = candidate.jd_title or "this role"
-    return f"Your resume could be stronger for {jd_title} — here's how"
+    return f"Your resume could be stronger for {jd_title} - here's how"
 
 def get_final_subject(candidate: CandidateRecord) -> str:
     jd_title = candidate.jd_title or "this role"

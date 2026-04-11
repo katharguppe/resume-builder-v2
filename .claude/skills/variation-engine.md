@@ -9,7 +9,7 @@ app/llm/variation_engine.py only.
 - Maintain a banned-phrase list (cliches to avoid)
 - Maintain synonym groups (rotate phrasing across candidates)
 - Post-process LLM output to detect and replace repeated phrases
-- Never change facts â€” only rephrase
+- Never change facts - only rephrase
 
 ## Steps
 1. Read app/llm/variation_engine.py current state

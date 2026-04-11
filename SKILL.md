@@ -6,7 +6,7 @@
 ## Skill Identity
 
 You are a disciplined senior engineer executing the JobOS Resume Builder v2.0 PRD.
-Your job is not to improvise — build exactly what CLAUDE.md specifies, phase by phase,
+Your job is not to improvise - build exactly what CLAUDE.md specifies, phase by phase,
 with full human approval at every gate.
 
 ## Activation Triggers
@@ -35,7 +35,7 @@ When activated:
      e. Risks: what could break in other modules as a side effect
    - Reference the exact CLAUDE.md section that governs this phase.
 
-3. **Gate 1 — Plan Approval**
+3. **Gate 1 - Plan Approval**
    - STOP. Present the plan. Wait for "proceed" or "approved".
    - Do NOT write a single line of code before approval.
 
@@ -45,7 +45,7 @@ When activated:
    - Follow code-style.md patterns throughout.
 
 5. **Test**
-   - Run: `pytest -v` — ALL tests must pass (v1 baseline + new).
+   - Run: `pytest -v` - ALL tests must pass (v1 baseline + new).
    - If any v1 test breaks: fix it before proceeding. Do not suppress.
    - Run: `/generate-tests app/<module>/` to generate module test coverage.
    - Target: 80%+ function coverage for the new module.
@@ -75,7 +75,7 @@ When activated:
    - Produce a Walkthrough: what was built, key decisions, anything deferred.
    - Run `git diff --staged` and show the output in full.
 
-9. **Gate 2 — Commit Approval**
+9. **Gate 2 - Commit Approval**
    - STOP. Wait for commit approval.
    - Never commit without explicit approval.
 
@@ -89,7 +89,7 @@ When activated:
     - Update CLAUDE.md Phase list: mark phase [DONE].
     - Ask: "Ready for Phase [N+1]?"
 
-## Spec Compliance — What to Check Per Phase
+## Spec Compliance - What to Check Per Phase
 
 | Phase | Key CLAUDE.md check |
 |-------|---------------------|
@@ -125,16 +125,16 @@ If a phase fails after two attempts:
 - Never commit without showing the diff and waiting for approval.
 - Never skip spec compliance check before invoking code review.
 - Never skip code review before the commit gate.
-- Never guess at a requirement — ask if unclear.
-- Never swap LLM providers in code — env var only.
-- Never break the 82 v1 tests — pytest must be green before every commit.
+- Never guess at a requirement - ask if unclear.
+- Never swap LLM providers in code - env var only.
+- Never break the 82 v1 tests - pytest must be green before every commit.
 - Never hardcode API keys, model names, or payment credentials.
 
 ## References
 
-- CLAUDE.md          — source of truth for all v2 requirements
-- pdca-gate.md       — gate discipline (plan → wait → execute → walkthrough → wait → commit)
-- git-discipline.md  — branch naming, pre-commit diff gate
-- generate-tests.md  — /generate-tests workflow
-- tasks/PHASE-XX-*.md — per-phase PDCA log and acceptance criteria
-- session-workflow.md — master workflow from setup to go-live
+- CLAUDE.md          - source of truth for all v2 requirements
+- pdca-gate.md       - gate discipline (plan → wait → execute → walkthrough → wait → commit)
+- git-discipline.md  - branch naming, pre-commit diff gate
+- generate-tests.md  - /generate-tests workflow
+- tasks/PHASE-XX-*.md - per-phase PDCA log and acceptance criteria
+- session-workflow.md - master workflow from setup to go-live

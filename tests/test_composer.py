@@ -211,7 +211,7 @@ def test_role_title_and_company_separate_lines(tmp_path, dummy_json):
     assert len(company_spans) >= 1, "Company 'TestCorp' not found in PDF"
     # They must not be on the same line (different origin y-coordinates)
     assert title_spans[0]["origin"][1] != company_spans[0]["origin"][1], (
-        "Title and company are on the same line — expected separate lines"
+        "Title and company are on the same line - expected separate lines"
     )
 
 
