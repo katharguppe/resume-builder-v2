@@ -110,3 +110,54 @@ def test_config_has_smtp_and_otp_fields():
     assert cfg.SMTP_PORT == 587        # default
     assert cfg.OTP_EXPIRY_MINUTES == 10
     assert cfg.SESSION_EXPIRY_HOURS == 24
+
+
+def test_generate_otp_is_6_digits():
+    from app.auth.otp import generate_otp
+    otp = generate_otp()
+    assert len(otp) == 6
+    assert otp.isdigit()
+
+
+def test_generate_otp_is_random():
+    from app.auth.otp import generate_otp
+    otps = {generate_otp() for _ in range(20)}
+    assert len(otps) > 1
+
+
+def test_verify_otp_valid(auth_db):
+    from app.auth.otp import verify_otp
+    from datetime import datetime, timedelta, timezone
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    auth_db.store_otp("judy@example.com", "424242", expires_at)
+    result = verify_otp(auth_db, "judy@example.com", "424242")
+    assert result is True
+
+
+def test_verify_otp_wrong_code(auth_db):
+    from app.auth.otp import verify_otp
+    from datetime import datetime, timedelta, timezone
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    auth_db.store_otp("kate@example.com", "111111", expires_at)
+    result = verify_otp(auth_db, "kate@example.com", "999999")
+    assert result is False
+
+
+def test_verify_otp_expired(auth_db):
+    from app.auth.otp import verify_otp
+    from datetime import datetime, timedelta, timezone
+    past = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    auth_db.store_otp("lena@example.com", "777777", past)
+    result = verify_otp(auth_db, "lena@example.com", "777777")
+    assert result is False
+
+
+def test_verify_otp_marks_used(auth_db):
+    from app.auth.otp import verify_otp
+    from datetime import datetime, timedelta, timezone
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    auth_db.store_otp("mary@example.com", "555555", expires_at)
+    verify_otp(auth_db, "mary@example.com", "555555")
+    # Second attempt with same code must fail
+    result = verify_otp(auth_db, "mary@example.com", "555555")
+    assert result is False
