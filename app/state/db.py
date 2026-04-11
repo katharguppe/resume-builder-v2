@@ -1,3 +1,4 @@
+import re
 import sqlite3
 import contextlib
 from pathlib import Path
@@ -269,22 +270,23 @@ class AuthDB:
 
     @staticmethod
     def _normalise_dt(dt_str: str) -> str:
-        """Convert ISO datetime string to plain UTC string SQLite can compare with datetime('now').
+        """Convert ISO 8601 datetime string to SQLite-compatible format (YYYY-MM-DD HH:MM:SS UTC).
 
-        Strips timezone offset and 'T' separator so the result matches SQLite's
-        ``datetime('now')`` format: ``YYYY-MM-DD HH:MM:SS[.ffffff]``.
+        Precondition: dt_str must be a UTC timestamp. Non-UTC offsets are not
+        supported and will raise ValueError.
         """
-        # Replace 'T' separator with space
-        s = dt_str.replace("T", " ")
-        # Strip trailing timezone info (+HH:MM or Z)
+        # Reject non-UTC offsets to prevent silent wrong expiry comparisons
+        if re.search(r"[+-](?!00:00)\d{2}:\d{2}$", dt_str):
+            raise ValueError(
+                f"_normalise_dt requires a UTC timestamp, got offset: {dt_str!r}"
+            )
+        # Strip UTC indicators and T separator
         for suffix in ("+00:00", "-00:00", "Z"):
-            if s.endswith(suffix):
-                s = s[: -len(suffix)]
+            if dt_str.endswith(suffix):
+                dt_str = dt_str[: -len(suffix)]
                 break
-        # Handle arbitrary +HH:MM or -HH:MM offsets
-        import re
-        s = re.sub(r"[+-]\d{2}:\d{2}$", "", s)
-        return s.strip()
+        dt_str = re.sub(r"[+-]\d{2}:\d{2}$", "", dt_str)
+        return dt_str.replace("T", " ")
 
     def store_otp(self, email: str, code: str, expires_at: str) -> int:
         with self._get_connection() as conn:
