@@ -186,3 +186,165 @@ class StateDB:
                 values = list(config_data.values())
                 conn.execute(f"INSERT INTO recruiter_config (id, {columns}) VALUES (1, {placeholders})", values)
             conn.commit()
+
+
+class AuthDB:
+    def __init__(self, db_path: Path):
+        self.db_path = db_path
+        self._init_db()
+
+    @contextlib.contextmanager
+    def _get_connection(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+    def _init_db(self):
+        with self._get_connection() as conn:
+            conn.execute('PRAGMA journal_mode=WAL')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT NOT NULL UNIQUE,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    last_login_at DATETIME
+                )
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS otp_codes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT NOT NULL,
+                    code TEXT NOT NULL,
+                    expires_at DATETIME NOT NULL,
+                    used INTEGER DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS sessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    email TEXT NOT NULL,
+                    token TEXT NOT NULL UNIQUE,
+                    expires_at DATETIME NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            ''')
+            conn.commit()
+
+    def create_user(self, email: str) -> int:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+            row = cursor.fetchone()
+            if row:
+                return row["id"]
+            cursor.execute(
+                "INSERT INTO users (email) VALUES (?)", (email,)
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    def get_user_by_email(self, email: str):
+        from app.auth.models import UserRecord
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return UserRecord(**dict(row))
+
+    def update_last_login(self, email: str):
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE email = ?",
+                (email,)
+            )
+            conn.commit()
+
+    @staticmethod
+    def _normalise_dt(dt_str: str) -> str:
+        """Convert ISO datetime string to plain UTC string SQLite can compare with datetime('now').
+
+        Strips timezone offset and 'T' separator so the result matches SQLite's
+        ``datetime('now')`` format: ``YYYY-MM-DD HH:MM:SS[.ffffff]``.
+        """
+        # Replace 'T' separator with space
+        s = dt_str.replace("T", " ")
+        # Strip trailing timezone info (+HH:MM or Z)
+        for suffix in ("+00:00", "-00:00", "Z"):
+            if s.endswith(suffix):
+                s = s[: -len(suffix)]
+                break
+        # Handle arbitrary +HH:MM or -HH:MM offsets
+        import re
+        s = re.sub(r"[+-]\d{2}:\d{2}$", "", s)
+        return s.strip()
+
+    def store_otp(self, email: str, code: str, expires_at: str) -> int:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO otp_codes (email, code, expires_at) VALUES (?, ?, ?)",
+                (email, code, self._normalise_dt(expires_at))
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    def get_valid_otp(self, email: str):
+        from app.auth.models import OTPRecord
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """SELECT * FROM otp_codes
+                   WHERE email = ? AND used = 0
+                     AND expires_at > datetime('now')
+                   ORDER BY id DESC LIMIT 1""",
+                (email,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return OTPRecord(**dict(row))
+
+    def mark_otp_used(self, otp_id: int):
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE otp_codes SET used = 1 WHERE id = ?", (otp_id,)
+            )
+            conn.commit()
+
+    def create_session(self, user_id: int, email: str, token: str, expires_at: str):
+        with self._get_connection() as conn:
+            conn.execute(
+                "INSERT INTO sessions (user_id, email, token, expires_at) VALUES (?, ?, ?, ?)",
+                (user_id, email, token, self._normalise_dt(expires_at))
+            )
+            conn.commit()
+
+    def get_session(self, token: str):
+        from app.auth.models import SessionRecord
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """SELECT * FROM sessions
+                   WHERE token = ? AND expires_at > datetime('now')""",
+                (token,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return SessionRecord(**dict(row))
+
+    def expire_session(self, token: str):
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE sessions SET expires_at = datetime('now', '-1 second') WHERE token = ?",
+                (token,)
+            )
+            conn.commit()
