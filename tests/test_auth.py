@@ -161,3 +161,31 @@ def test_verify_otp_marks_used(auth_db):
     # Second attempt with same code must fail
     result = verify_otp(auth_db, "mary@example.com", "555555")
     assert result is False
+
+
+def test_create_session_returns_token(auth_db):
+    from app.auth.session import create_session
+    token = create_session(auth_db, "nina@example.com")
+    assert isinstance(token, str)
+    assert len(token) == 36  # UUID4 format
+
+
+def test_validate_session_valid(auth_db):
+    from app.auth.session import create_session, validate_session
+    token = create_session(auth_db, "oliver@example.com")
+    session = validate_session(auth_db, token)
+    assert session is not None
+    assert session.email == "oliver@example.com"
+
+
+def test_validate_session_invalid_token(auth_db):
+    from app.auth.session import validate_session
+    session = validate_session(auth_db, "not-a-real-token")
+    assert session is None
+
+
+def test_expire_session_invalidates(auth_db):
+    from app.auth.session import create_session, expire_session, validate_session
+    token = create_session(auth_db, "petra@example.com")
+    expire_session(auth_db, token)
+    assert validate_session(auth_db, token) is None
