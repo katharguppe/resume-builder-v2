@@ -150,43 +150,78 @@ Load the plan and execute it using superpowers:executing-plans.
 
     "phase-3" = @{
         model = $SONNET
-        label = "Phase 3 - ATS Score Engine (batch, in-process)"
+        label = "Phase 3 - ATS Score Engine (batch, in-process) - RESUME from Task 3"
         task  = "PHASE-03"
         prompt = @'
 Stack: Python 3.13, no LLM - pure Python scoring
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
-Task file: tasks/PHASE-03-ats-score-engine-batch.md
+Branch: feature/phase-02-upload-parse (144 tests passing)
+Plan file: docs/superpowers/plans/2026-04-12-phase-03-ats-score-engine.md
 
-PHASE 3: ATS Score Engine - batch, in-process, no LLM
+PHASE 3 RESUME SESSION - Tasks 1 and 2 are COMPLETE. Do NOT redo them.
 
-Scope: app/scoring/ only (new module)
+════════════════════════════════════════════════
+ALREADY DONE (do not re-implement):
+════════════════════════════════════════════════
+Pre-fixes committed (9d67daa):
+  - app/ui/pages/1_Setup.py: anthropic_api_key renamed + GEMINI_API_KEY field added
+  - app/state/models.py: ats_score_json: Optional[str] added to SubmissionRecord
+  - app/state/db.py: ats_score_json TEXT column + ALTER TABLE migration + whitelist
+  - tests/test_state.py: ats_score_json=None added to fixture
 
-What to build:
-  app/scoring/__init__.py
-  app/scoring/ats_scorer.py   - compute_ats_score(resume_fields, jd_fields) -> ATSScore
-  app/scoring/missing_info.py - detect_missing(resume_fields) -> List[MissingItem]
-  app/scoring/models.py       - ATSScore, MissingItem dataclasses
+Task 1 committed (a30fd9f):
+  - app/scoring/models.py: ATSScore + MissingItem dataclasses
+  - app/scoring/__init__.py: stub
+  - tests/test_scoring_models.py: 6 tests
 
-ATS score components (0-100):
-  keyword_match        (30%) - resume keywords vs JD required keywords
-  skills_coverage      (30%) - resume skills vs JD required skills
-  experience_clarity   (20%) - presence of: dates, roles, company names, achievements
-  structure_completeness(20%) - presence of: summary, education, certifications
+Task 2 committed (e811327):
+  - app/scoring/ats_scorer.py: _tokenize, _score_keyword_match, _normalize_skill (REAL)
+    _score_skills_coverage, _score_experience_clarity, _score_structure_completeness,
+    compute_ats_score are STUBS (return 15/0 - to be replaced in Tasks 3-4)
+  - tests/test_ats_scorer.py: _make_jd + _make_resume_fields helpers + 7 keyword_match tests
 
-Missing info severity:
-  HIGH   - missing dates, missing current role designation
-  MEDIUM - no measurable achievements, no company description
-  LOW    - no certifications, no LinkedIn/GitHub
+════════════════════════════════════════════════
+STEP 1 - APPLY THESE 4 FIXES FIRST (from code review of Task 2):
+════════════════════════════════════════════════
+In app/scoring/ats_scorer.py:
 
-Rules:
-  - NO LLM calls in this module - pure Python string matching + heuristics
-  - Score must complete in <1s
-  - Use skill: ats-scorer for each component
+Fix 1 - non-string guard at top of _tokenize:
+  if not isinstance(text, str):
+      return set()
 
-Before writing any code:
-  1. Read app/ingestor/extractor.py (understand the field structure from v1)
-  2. Present scoring algorithm design
-  3. Wait for approval
+Fix 2 - non-string guard in _score_keyword_match responsibilities loop:
+  for resp in responsibilities:
+      if isinstance(resp, str):
+          jd_tokens.update(_tokenize(resp))
+
+Fix 3 - replace _normalize_skill with alias-aware version (C++ -> cplusplus, split on /,  NOT +):
+  _SKILL_ALIASES = {
+      "c++": "cplusplus", "c#": "csharp", "f#": "fsharp",
+      ".net": "dotnet", "node.js": "nodejs", "vue.js": "vuejs",
+      "react.js": "reactjs", "next.js": "nextjs",
+  }
+  def _normalize_skill(skill: str) -> List[str]:
+      lowered = skill.lower().strip()
+      for src, dst in _SKILL_ALIASES.items():
+          lowered = lowered.replace(src, dst)
+      parts = re.split(r"[/,]", lowered)
+      return [re.sub(r"[^a-z0-9\s]", "", p).strip() for p in parts if p.strip()]
+
+Fix 4 - tighten fallback test in tests/test_ats_scorer.py:
+  test_keyword_match_fallback_empty_responsibilities:
+    assert 0 < score <= 15  (was: assert score <= 15)
+
+Run: python -m pytest tests/ -q   -> must still show 144 passed
+Commit: [PHASE-03] fix: non-string guard in tokenize; C++ alias in normalize_skill; tighten fallback test
+
+════════════════════════════════════════════════
+STEP 2 - CONTINUE with Tasks 3-7 from the plan:
+════════════════════════════════════════════════
+Load plan: docs/superpowers/plans/2026-04-12-phase-03-ats-score-engine.md
+Execute Tasks 3, 4, 5, 6, 7 using superpowers:subagent-driven-development.
+Start at Task 3 (skills_coverage). Do NOT re-run Tasks 1 or 2.
+
+Use python -m pytest (not bare pytest) for all test runs.
 '@
     }
 
