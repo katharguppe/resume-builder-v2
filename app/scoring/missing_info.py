@@ -2,22 +2,7 @@ import re
 from typing import List
 
 from app.scoring.models import MissingItem
-
-_DATE_RE = re.compile(
-    r"\b(19|20)\d{2}\b"
-    r"|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}"
-    r"|\b\d{4}\s*-\s*(?:present|current|\d{4})",
-    re.IGNORECASE,
-)
-_COMPANY_RE = re.compile(
-    r"\b(?:Ltd|Inc|Corp|LLC|Pvt|GmbH|Limited|Incorporated|Technologies|Solutions|Services)\b",
-    re.IGNORECASE,
-)
-_ACHIEVEMENT_RE = re.compile(
-    r"\d+\s*(?:%|x\b|X\b|\$|K\b|M\b|L\b|cr\b|lakh|crore)"
-    r"|\d{2,}\s+(?:users|customers|clients|employees|candidates|projects|teams)",
-    re.IGNORECASE,
-)
+from app.scoring._patterns import _DATE_RE, _COMPANY_RE, _ACHIEVEMENT_RE
 _CERT_RE = re.compile(r"\bcertif|\bcourses\b|\btraining\b|\bawards\b|\bachievements\b", re.IGNORECASE)
 _SOCIAL_RE = re.compile(r"linkedin\.com|github\.com", re.IGNORECASE)
 
