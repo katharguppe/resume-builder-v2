@@ -6,6 +6,23 @@ from typing import List, Optional, Dict, Any
 
 from .models import CandidateStatus, CandidateRecord, ConfigRecord
 
+
+class _SqliteDB:
+    """Shared base: WAL-mode SQLite connection context manager."""
+
+    def __init__(self, db_path: Path):
+        self.db_path = db_path
+
+    @contextlib.contextmanager
+    def _get_connection(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+
 VALID_TRANSITIONS = {
     CandidateStatus.PENDING: [CandidateStatus.PROCESSING],
     CandidateStatus.PROCESSING: [CandidateStatus.HAPPY_PATH, CandidateStatus.MISSING_DETAILS, CandidateStatus.ERROR],
@@ -16,19 +33,10 @@ VALID_TRANSITIONS = {
     CandidateStatus.PAYMENT_CONFIRMED: [CandidateStatus.OUTPUT_SENT]
 }
 
-class StateDB:
+class StateDB(_SqliteDB):
     def __init__(self, db_path: Path):
-        self.db_path = db_path
+        super().__init__(db_path)
         self._init_db()
-
-    @contextlib.contextmanager
-    def _get_connection(self):
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        try:
-            yield conn
-        finally:
-            conn.close()
 
     def _init_db(self):
         with self._get_connection() as conn:
@@ -189,19 +197,10 @@ class StateDB:
             conn.commit()
 
 
-class AuthDB:
+class AuthDB(_SqliteDB):
     def __init__(self, db_path: Path):
-        self.db_path = db_path
+        super().__init__(db_path)
         self._init_db()
-
-    @contextlib.contextmanager
-    def _get_connection(self):
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        try:
-            yield conn
-        finally:
-            conn.close()
 
     def _init_db(self):
         with self._get_connection() as conn:

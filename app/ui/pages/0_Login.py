@@ -7,7 +7,7 @@ from app.state.db import AuthDB
 from app.auth.otp import issue_otp, send_otp_email, verify_otp
 from app.auth.session import create_session
 
-DB_PATH = Path(os.getenv("DB_PATH", "resume_builder.db"))
+DB_PATH = Path(os.getenv("AUTH_DB_PATH", "resume_builder.db"))
 
 
 def _get_auth_db() -> AuthDB:
