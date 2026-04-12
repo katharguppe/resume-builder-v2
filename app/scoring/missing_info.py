@@ -33,6 +33,8 @@ def detect_missing(resume_fields: dict, resume_raw_text: str) -> List[MissingIte
     Returns:
         List of MissingItem sorted HIGH -> MEDIUM -> LOW.
     """
+    if not isinstance(resume_raw_text, str):
+        resume_raw_text = ""
     items: List[MissingItem] = []
 
     # HIGH
