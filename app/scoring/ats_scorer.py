@@ -1,0 +1,88 @@
+import re
+from typing import List, Set, Tuple
+
+from app.scoring.models import ATSScore
+
+_STOP_WORDS = {
+    "the", "a", "an", "and", "or", "to", "of", "in", "for",
+    "with", "is", "are", "be", "by", "that", "this", "on",
+    "at", "as", "from", "it", "its", "we", "you", "our",
+    "will", "have", "has", "do", "does", "not", "but",
+}
+
+
+def _tokenize(text: str) -> Set[str]:
+    """Lowercase, split on non-alphanumeric, remove stop-words and single chars."""
+    tokens = re.findall(r"[a-zA-Z0-9]+", text.lower())
+    return {t for t in tokens if t not in _STOP_WORDS and len(t) > 1}
+
+
+def _score_keyword_match(
+    jd_fields: dict, resume_tokens: Set[str]
+) -> Tuple[int, List[str]]:
+    """keyword_match: 0-30 pts. Falls back to job_title (max 15) if no responsibilities."""
+    responsibilities = jd_fields.get("key_responsibilities") or []
+
+    if not responsibilities:
+        job_title = jd_fields.get("job_title", "")
+        jd_tokens = _tokenize(job_title)
+        if not jd_tokens:
+            return 15, []
+        matched = [t for t in jd_tokens if t in resume_tokens]
+        return min(round(len(matched) / len(jd_tokens) * 15), 15), matched
+
+    jd_tokens: Set[str] = set()
+    for resp in responsibilities:
+        jd_tokens.update(_tokenize(resp))
+
+    if not jd_tokens:
+        return 15, []
+
+    matched = [t for t in jd_tokens if t in resume_tokens]
+    return min(round(len(matched) / len(jd_tokens) * 30), 30), matched
+
+
+def _normalize_skill(skill: str) -> List[str]:
+    """Split compound skills on / + , and lowercase. Returns list of normalized parts."""
+    parts = re.split(r"[/+,]", skill.lower())
+    return [re.sub(r"[^a-z0-9\s]", "", p).strip() for p in parts if p.strip()]
+
+
+def _score_skills_coverage(
+    jd_fields: dict, resume_fields: dict
+) -> Tuple[int, List[str], List[str]]:
+    """Stub — implemented in Task 3."""
+    return 15, [], []
+
+
+def _score_experience_clarity(
+    resume_fields: dict, resume_raw_text: str
+) -> int:
+    """Stub — implemented in Task 4."""
+    return 0
+
+
+def _score_structure_completeness(resume_raw_text: str) -> int:
+    """Stub — implemented in Task 4."""
+    return 0
+
+
+def compute_ats_score(
+    resume_fields: dict, jd_fields: dict, resume_raw_text: str
+) -> ATSScore:
+    """Stub — assembled in Task 5."""
+    resume_tokens = _tokenize(resume_raw_text)
+    kw_score, kw_matched = _score_keyword_match(jd_fields, resume_tokens)
+    sk_score, sk_matched, sk_missing = _score_skills_coverage(jd_fields, resume_fields)
+    exp_score = _score_experience_clarity(resume_fields, resume_raw_text)
+    struct_score = _score_structure_completeness(resume_raw_text)
+    return ATSScore(
+        total=kw_score + sk_score + exp_score + struct_score,
+        keyword_match=kw_score,
+        skills_coverage=sk_score,
+        experience_clarity=exp_score,
+        structure_completeness=struct_score,
+        keyword_matched=kw_matched,
+        skills_matched=sk_matched,
+        skills_missing=sk_missing,
+    )
