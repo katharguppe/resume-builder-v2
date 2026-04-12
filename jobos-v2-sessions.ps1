@@ -232,7 +232,11 @@ Use python -m pytest (not bare pytest) for all test runs.
         prompt = @'
 Stack: Python 3.13, Streamlit, SQLite, reportlab
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
-Task file: tasks/PHASE-04-resume-review-page.md
+Branch: feature/phase-02-upload-parse (183 tests passing)
+
+PHASE 3 IS COMPLETE. Do NOT redo it.
+  app/scoring/ is fully built: ats_scorer, missing_info, models, _patterns, __init__
+  compute_ats_score() and detect_missing() are live and tested.
 
 PHASE 4: Resume review page - read-only output + accept/reject controls
 
@@ -240,8 +244,8 @@ Scope: app/ui/pages/3_Review.py + app/llm/ (trigger rewrite for first generation
 
 What to build:
   app/ui/pages/3_Review.py - candidate review page:
-    - Show ATS score breakdown (from Phase 3)
-    - Show missing info panel (severity ranked)
+    - Show ATS score breakdown (from Phase 3 compute_ats_score)
+    - Show missing info panel (from Phase 3 detect_missing, severity ranked)
     - Show AI-generated resume (PDF preview or structured text)
     - Show JD alignment highlights
     - Controls: [Accept Draft] [Request Revision] [Back]
@@ -258,11 +262,13 @@ Rules:
   - No editing on this page - read-only
   - Revision button only shows if revisions_remaining > 0 (max 3)
   - Status machine: PROCESSING -> REVIEW_READY
+  - Use python -m pytest (not bare pytest) for all test runs
 
 Before writing any code:
-  1. Read app/composer/pdf_writer.py + app/llm/finetuner.py fully
-  2. Present provider.py design (Gemini Flash + DeepSeek V3 adapters)
-  3. Wait for approval
+  1. Read /memory to load Phase 3 context
+  2. Read app/composer/pdf_writer.py + app/llm/finetuner.py fully
+  3. Present provider.py design (Gemini Flash + DeepSeek V3 adapters)
+  4. Wait for approval
 '@
     }
 
