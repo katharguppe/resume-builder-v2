@@ -189,3 +189,20 @@ def test_expire_session_invalidates(auth_db):
     token = create_session(auth_db, "petra@example.com")
     expire_session(auth_db, token)
     assert validate_session(auth_db, token) is None
+
+
+def test_store_otp_invalidates_prior_unused(auth_db):
+    """Issuing a new OTP must invalidate all prior unused OTPs for the same email."""
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    auth_db.store_otp("quinn@example.com", "111111", expires_at)
+    auth_db.store_otp("quinn@example.com", "222222", expires_at)
+    # Only the latest code should be valid
+    otp = auth_db.get_valid_otp("quinn@example.com")
+    assert otp is not None
+    assert otp.code == "222222"
+
+
+def test_normalise_dt_rejects_naive_datetime(auth_db):
+    """Naive datetime strings (no UTC offset) must raise ValueError."""
+    with pytest.raises(ValueError, match="missing offset"):
+        auth_db._normalise_dt("2025-01-15T10:30:00")

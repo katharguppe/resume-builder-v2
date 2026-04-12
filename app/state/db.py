@@ -272,13 +272,18 @@ class AuthDB:
     def _normalise_dt(dt_str: str) -> str:
         """Convert ISO 8601 datetime string to SQLite-compatible format (YYYY-MM-DD HH:MM:SS UTC).
 
-        Precondition: dt_str must be a UTC timestamp. Non-UTC offsets are not
-        supported and will raise ValueError.
+        Precondition: dt_str must be a UTC timestamp. Non-UTC offsets and naive
+        datetime strings (no offset) will raise ValueError.
         """
         # Reject non-UTC offsets to prevent silent wrong expiry comparisons
         if re.search(r"[+-](?!00:00)\d{2}:\d{2}$", dt_str):
             raise ValueError(
                 f"_normalise_dt requires a UTC timestamp, got offset: {dt_str!r}"
+            )
+        # Reject naive datetime strings (no UTC offset marker at all)
+        if not any(dt_str.endswith(s) for s in ("+00:00", "-00:00", "Z")):
+            raise ValueError(
+                f"_normalise_dt requires a UTC timestamp (missing offset): {dt_str!r}"
             )
         # Strip UTC indicators and T separator
         for suffix in ("+00:00", "-00:00", "Z"):
@@ -291,6 +296,11 @@ class AuthDB:
     def store_otp(self, email: str, code: str, expires_at: str) -> int:
         with self._get_connection() as conn:
             cursor = conn.cursor()
+            # Invalidate any prior unused OTPs for this email (one active OTP per window)
+            cursor.execute(
+                "UPDATE otp_codes SET used = 1 WHERE email = ? AND used = 0",
+                (email,)
+            )
             cursor.execute(
                 "INSERT INTO otp_codes (email, code, expires_at) VALUES (?, ?, ?)",
                 (email, code, self._normalise_dt(expires_at))
