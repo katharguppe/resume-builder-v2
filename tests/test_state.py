@@ -116,11 +116,51 @@ def test_config_crud(state_db):
 def test_checkpoint_save_and_read(cp_mgr):
     # empty
     assert cp_mgr.get_resume_point("/src") is None
-    
+
     cp_mgr.save_checkpoint(1, 5, "res1.pdf", 1, "/src")
     cp_mgr.save_checkpoint(1, 5, "res2.pdf", 2, "/src")
-    
+
     cp = cp_mgr.get_resume_point("/src")
     assert cp is not None
     assert cp.last_processed_filename == "res2.pdf"
     assert cp.total_processed == 2
+
+
+# ── Phase 2: SubmissionStatus + SubmissionRecord ──────────────────────────────
+
+from app.state.models import SubmissionStatus, SubmissionRecord
+
+
+def test_submission_status_values():
+    assert SubmissionStatus.PENDING.value == "PENDING"
+    assert SubmissionStatus.PROCESSING.value == "PROCESSING"
+    assert SubmissionStatus.REVIEW_READY.value == "REVIEW_READY"
+    assert SubmissionStatus.REVISION_REQUESTED.value == "REVISION_REQUESTED"
+    assert SubmissionStatus.REVISION_EXHAUSTED.value == "REVISION_EXHAUSTED"
+    assert SubmissionStatus.ACCEPTED.value == "ACCEPTED"
+    assert SubmissionStatus.PAYMENT_PENDING.value == "PAYMENT_PENDING"
+    assert SubmissionStatus.PAYMENT_CONFIRMED.value == "PAYMENT_CONFIRMED"
+    assert SubmissionStatus.DOWNLOAD_READY.value == "DOWNLOAD_READY"
+    assert SubmissionStatus.DOWNLOADED.value == "DOWNLOADED"
+    assert SubmissionStatus.ERROR.value == "ERROR"
+
+
+def test_submission_record_fields():
+    rec = SubmissionRecord(
+        id=1,
+        user_id=2,
+        session_token="tok",
+        resume_raw_text="raw",
+        resume_fields_json='{"candidate_name": "Alice"}',
+        resume_photo_path=None,
+        jd_raw_text="jd text",
+        jd_fields_json='{"job_title": "Engineer"}',
+        status="PENDING",
+        revision_count=0,
+        error_message=None,
+        created_at="2026-01-01T00:00:00",
+        updated_at="2026-01-01T00:00:00",
+    )
+    assert rec.user_id == 2
+    assert rec.revision_count == 0
+    assert rec.resume_photo_path is None

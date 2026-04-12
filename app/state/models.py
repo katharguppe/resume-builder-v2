@@ -2,6 +2,37 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
+
+class SubmissionStatus(str, Enum):
+    PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
+    REVIEW_READY = "REVIEW_READY"
+    REVISION_REQUESTED = "REVISION_REQUESTED"
+    REVISION_EXHAUSTED = "REVISION_EXHAUSTED"
+    ACCEPTED = "ACCEPTED"
+    PAYMENT_PENDING = "PAYMENT_PENDING"
+    PAYMENT_CONFIRMED = "PAYMENT_CONFIRMED"
+    DOWNLOAD_READY = "DOWNLOAD_READY"
+    DOWNLOADED = "DOWNLOADED"
+    ERROR = "ERROR"
+
+
+@dataclass
+class SubmissionRecord:
+    id: Optional[int]
+    user_id: int
+    session_token: str
+    resume_raw_text: Optional[str]
+    resume_fields_json: Optional[str]
+    resume_photo_path: Optional[str]
+    jd_raw_text: Optional[str]
+    jd_fields_json: Optional[str]
+    status: str
+    revision_count: int
+    error_message: Optional[str]
+    created_at: Optional[str]
+    updated_at: Optional[str]
+
 class CandidateStatus(str, Enum):
     PENDING = "PENDING"
     PROCESSING = "PROCESSING"
