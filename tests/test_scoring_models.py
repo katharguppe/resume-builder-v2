@@ -1,6 +1,3 @@
-import pytest
-from dataclasses import fields
-
 
 def test_ats_score_import():
     from app.scoring.models import ATSScore
