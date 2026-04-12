@@ -14,7 +14,7 @@ from app.state.db import StateDB
 def main():
     st.set_page_config(page_title="Resume Finetuner", page_icon="📄", layout="wide")
     
-    db_path = Path(os.getcwd()) / "resume_tuner.db"
+    db_path = Path(os.getenv("DB_PATH", "resume_tuner.db"))
     db = StateDB(db_path)
     
     config_record = db.get_config()

@@ -78,7 +78,7 @@ def test_keyword_match_fallback_empty_responsibilities():
     jd = _make_jd(key_responsibilities=[], job_title="Python Developer")
     resume_tokens = _tokenize("Python developer experience")
     score, matched = _score_keyword_match(jd, resume_tokens)
-    assert score <= 15  # fallback caps at 15
+    assert 0 < score <= 15  # fallback fires (not zero) and caps at 15
 
 
 def test_keyword_match_fallback_completely_empty_jd():

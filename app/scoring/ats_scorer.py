@@ -13,6 +13,8 @@ _STOP_WORDS = {
 
 def _tokenize(text: str) -> Set[str]:
     """Lowercase, split on non-alphanumeric, remove stop-words and single chars."""
+    if not isinstance(text, str):
+        return set()
     tokens = re.findall(r"[a-zA-Z0-9]+", text.lower())
     return {t for t in tokens if t not in _STOP_WORDS and len(t) > 1}
 
@@ -33,7 +35,8 @@ def _score_keyword_match(
 
     jd_tokens: Set[str] = set()
     for resp in responsibilities:
-        jd_tokens.update(_tokenize(resp))
+        if isinstance(resp, str):
+            jd_tokens.update(_tokenize(resp))
 
     if not jd_tokens:
         return 15, []
@@ -42,9 +45,30 @@ def _score_keyword_match(
     return min(round(len(matched) / len(jd_tokens) * 30), 30), matched
 
 
+_SKILL_ALIASES = {
+    "c++": "cplusplus",
+    "c#": "csharp",
+    "f#": "fsharp",
+    ".net": "dotnet",
+    "node.js": "nodejs",
+    "vue.js": "vuejs",
+    "react.js": "reactjs",
+    "next.js": "nextjs",
+}
+
+
 def _normalize_skill(skill: str) -> List[str]:
-    """Split compound skills on / + , and lowercase. Returns list of normalized parts."""
-    parts = re.split(r"[/+,]", skill.lower())
+    """Normalize a skill string for matching.
+
+    Applies known aliases (C++ -> cplusplus, C# -> csharp), then
+    splits on / and , (not +), lowercases, and strips punctuation.
+    """
+    if not isinstance(skill, str):
+        return []
+    lowered = skill.lower().strip()
+    for src, dst in _SKILL_ALIASES.items():
+        lowered = lowered.replace(src, dst)
+    parts = re.split(r"[/,]", lowered)
     return [re.sub(r"[^a-z0-9\s]", "", p).strip() for p in parts if p.strip()]
 
 
