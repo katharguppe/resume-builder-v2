@@ -139,11 +139,12 @@ New in v2:
   - Store parsed resume_fields + jd_fields in DB linked to user session
   - app/ingestor/jd_extractor.py - extract JD fields using EXTRACT provider
 
-Before writing any code:
-  1. Read app/ingestor/extractor.py fully (headshot heuristic is critical - do not break)
-  2. Read app/state/db.py (new users/sessions tables from Phase 1)
-  3. Present plan
-  4. Wait for approval
+Implementation plan already written - DO NOT re-plan.
+Plan file: docs/superpowers/plans/2026-04-12-phase-02-upload-parse.md
+Scope resolved: YES Phase 2 includes LLM extract_fields call.
+Branch from: feature/phase-01-auth
+
+Load the plan and execute it using superpowers:executing-plans.
 '@
     }
 
@@ -641,4 +642,4 @@ if ($Session -ne "debug") {
     $s.prompt | Set-Content $tmpPrompt -Encoding UTF8
 }
 
-claude --model $s.model --print (Get-Content $tmpPrompt -Raw)
+claude --model $s.model "$(Get-Content $tmpPrompt -Raw)"
