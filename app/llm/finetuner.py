@@ -3,7 +3,12 @@ import logging
 import re
 import anthropic
 from app.config import config
-from app.llm.prompt_builder import build_extraction_prompt, build_finetuning_prompt
+from app.llm.prompt_builder import (
+    build_extraction_prompt,
+    build_finetuning_prompt,
+    build_resume_fields_prompt,
+    build_jd_extraction_prompt,
+)
 
 logger = logging.getLogger("llm")
 
@@ -103,7 +108,6 @@ def extract_resume_fields_claude(resume_text: str) -> dict:
       candidate_name, email, phone, current_title, skills[], experience_summary
     v1 extract_fields() is preserved unchanged for backward compat.
     """
-    from app.llm.prompt_builder import build_resume_fields_prompt
     prompt = build_resume_fields_prompt(resume_text)
     client = _get_client()
 
@@ -131,7 +135,6 @@ def extract_jd_fields_claude(jd_text: str) -> dict:
     Returns: job_title, company, required_skills[], preferred_skills[],
              experience_required, education_required, key_responsibilities[]
     """
-    from app.llm.prompt_builder import build_jd_extraction_prompt
     prompt = build_jd_extraction_prompt(jd_text)
     client = _get_client()
 

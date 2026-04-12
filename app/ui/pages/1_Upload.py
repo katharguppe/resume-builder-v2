@@ -73,7 +73,7 @@ def _save_photo(photo_bytes: bytes) -> str:
 
 
 def main():
-    st.set_page_config(page_title="JobOS - Upload", page_icon="=")
+    st.set_page_config(page_title="JobOS - Upload", page_icon="📄")
     st.title("Upload Resume + Job Description")
 
     user_id, token = _require_auth()
@@ -115,17 +115,28 @@ def main():
             st.stop()
 
         with st.spinner("Extracting resume text and photo..."):
-            resume_tmp = _save_uploaded_to_temp(resume_file)
             try:
-                resume_result = extract_text_and_photo(resume_tmp)
-                resume_raw = resume_result["text"]
-                photo_bytes = resume_result.get("photo_bytes")
+                resume_tmp = _save_uploaded_to_temp(resume_file)
+                try:
+                    suffix = Path(resume_file.name).suffix.lower()
+                    if suffix == ".pdf":
+                        resume_result = extract_text_and_photo(resume_tmp)
+                        resume_raw = resume_result["text"]
+                        photo_bytes = resume_result.get("photo_bytes")
+                    else:
+                        # DOC/DOCX: LibreOffice converts internally; headshot extraction not supported
+                        resume_raw = extract_text(resume_tmp)
+                        photo_bytes = None
+                except Exception as e:
+                    logger.error(f"Resume extraction failed: {e}")
+                    st.error(f"Could not read resume: {e}")
+                    st.stop()
+                finally:
+                    resume_tmp.unlink(missing_ok=True)
             except Exception as e:
-                logger.error(f"Resume extraction failed: {e}")
-                st.error(f"Could not read resume: {e}")
+                logger.error(f"Failed to save resume to temp file: {e}")
+                st.error(f"Could not process uploaded file: {e}")
                 st.stop()
-            finally:
-                resume_tmp.unlink(missing_ok=True)
 
         if not jd_text_final and jd_file:
             with st.spinner("Extracting Job Description text..."):
@@ -164,13 +175,20 @@ def main():
 
         subs_db = _get_subs_db()
         sub_id = subs_db.create_submission(user_id=user_id, session_token=token)
-        subs_db.update_submission(sub_id, {
-            "resume_raw_text": resume_raw,
-            "resume_fields_json": json.dumps(resume_fields),
-            "resume_photo_path": photo_path,
-            "jd_raw_text": jd_text_final,
-            "jd_fields_json": json.dumps(jd_fields),
-        })
+        try:
+            subs_db.update_submission(sub_id, {
+                "resume_raw_text": resume_raw,
+                "resume_fields_json": json.dumps(resume_fields),
+                "resume_photo_path": photo_path,
+                "jd_raw_text": jd_text_final,
+                "jd_fields_json": json.dumps(jd_fields),
+            })
+            subs_db.set_status(sub_id, SubmissionStatus.PROCESSING)
+        except Exception as e:
+            subs_db.set_status(sub_id, SubmissionStatus.ERROR)
+            logger.error(f"Failed to store submission #{sub_id}: {e}")
+            st.error(f"Failed to store submission: {e}")
+            st.stop()
 
         st.session_state["current_submission_id"] = sub_id
         candidate_name = resume_fields.get("candidate_name") or "Unknown"

@@ -374,6 +374,7 @@ class SubmissionsDB(_SqliteDB):
     def _init_db(self):
         with self._get_connection() as conn:
             conn.execute('PRAGMA journal_mode=WAL')
+            conn.execute('PRAGMA foreign_keys = ON')
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS submissions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -388,7 +389,8 @@ class SubmissionsDB(_SqliteDB):
                     revision_count INTEGER DEFAULT 0,
                     error_message TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
                 )
             ''')
             conn.commit()
@@ -413,11 +415,19 @@ class SubmissionsDB(_SqliteDB):
                 return None
             return SubmissionRecord(**dict(row))
 
+    _SUBMISSION_UPDATE_COLUMNS = frozenset({
+        "resume_raw_text", "resume_fields_json", "resume_photo_path",
+        "jd_raw_text", "jd_fields_json", "revision_count", "error_message",
+    })
+
     def update_submission(self, submission_id: int, updates: Dict[str, Any]):
         if not updates:
             return
         if "status" in updates:
             raise ValueError("Status must be updated via set_status()")
+        invalid = set(updates.keys()) - self._SUBMISSION_UPDATE_COLUMNS
+        if invalid:
+            raise ValueError(f"update_submission: unknown columns: {invalid}")
         set_clause = ", ".join([f"{k} = ?" for k in updates.keys()])
         set_clause += ", updated_at = CURRENT_TIMESTAMP"
         values = list(updates.values())
