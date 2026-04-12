@@ -75,8 +75,45 @@ def _normalize_skill(skill: str) -> List[str]:
 def _score_skills_coverage(
     jd_fields: dict, resume_fields: dict
 ) -> Tuple[int, List[str], List[str]]:
-    """Stub — implemented in Task 3."""
-    return 15, [], []
+    """skills_coverage: 0-30 pts. Required skills worth 24 pts, preferred 6 pts."""
+    required = jd_fields.get("required_skills") or []
+    preferred = jd_fields.get("preferred_skills") or []
+    resume_skills_raw = resume_fields.get("skills") or []
+
+    if not required and not preferred:
+        return 15, [], []
+
+    # Flatten resume skills into normalized parts (words)
+    resume_words: Set[str] = set()
+    for s in resume_skills_raw:
+        parts = _normalize_skill(s)
+        for part in parts:
+            # Split each part into word tokens to support substring matching
+            # e.g., "python310" -> "python310", "python310" -> words
+            tokens = re.findall(r"[a-z0-9]+", part)
+            resume_words.update(tokens)
+
+    def _matches(jd_skill: str) -> bool:
+        jd_parts = _normalize_skill(jd_skill)
+        for jd_part in jd_parts:
+            # Split JD skill into word tokens
+            jd_tokens = re.findall(r"[a-z0-9]+", jd_part)
+            for jd_token in jd_tokens:
+                # Check if this token appears in resume_words
+                if jd_token in resume_words:
+                    return True
+        return False
+
+    matched: List[str] = []
+    missing: List[str] = []
+    for skill in required:
+        (matched if _matches(skill) else missing).append(skill)
+
+    required_score = round(len(matched) / len(required) * 24) if required else 0
+    preferred_matched = sum(1 for s in preferred if _matches(s))
+    preferred_score = round(preferred_matched / len(preferred) * 6) if preferred else 0
+
+    return min(required_score + preferred_score, 30), matched, missing
 
 
 def _score_experience_clarity(
