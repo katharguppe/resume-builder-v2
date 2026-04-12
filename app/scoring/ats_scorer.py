@@ -174,7 +174,7 @@ def _score_structure_completeness(resume_raw_text: str) -> int:
 def compute_ats_score(
     resume_fields: dict, jd_fields: dict, resume_raw_text: str
 ) -> ATSScore:
-    """Stub — assembled in Task 5."""
+    """Compute ATS score across all four components."""
     resume_tokens = _tokenize(resume_raw_text)
     kw_score, kw_matched = _score_keyword_match(jd_fields, resume_tokens)
     sk_score, sk_matched, sk_missing = _score_skills_coverage(jd_fields, resume_fields)

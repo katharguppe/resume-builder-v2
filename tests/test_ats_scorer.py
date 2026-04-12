@@ -315,3 +315,60 @@ def test_structure_completeness_certif_prefix_match():
         text = f"{word}\nAWS Cloud Practitioner"
         score = _score_structure_completeness(text)
         assert score == 5, f"Expected certif match for: {word!r}"
+
+
+# ---------------------------------------------------------------------------
+# compute_ats_score integration
+# ---------------------------------------------------------------------------
+
+def test_compute_ats_score_total_in_range():
+    from app.scoring.ats_scorer import compute_ats_score
+    jd = _make_jd(
+        required_skills=["Python", "AWS"],
+        key_responsibilities=["build Python services", "deploy AWS infrastructure"],
+    )
+    resume = _make_resume_fields(
+        current_title="Backend Engineer",
+        skills=["Python", "AWS", "Docker"],
+    )
+    raw = (
+        "Backend Engineer at Acme Ltd 2020-2023\n"
+        "Summary\nSkilled Python developer.\n"
+        "Skills\nPython, AWS, Docker\n"
+        "Education\nBachelor of Engineering 2016\n"
+        "Certifications\nAWS Certified\n"
+        "Increased throughput by 40%"
+    )
+    score = compute_ats_score(resume, jd, raw)
+    assert 0 <= score.total <= 100
+    assert score.total == (
+        score.keyword_match + score.skills_coverage +
+        score.experience_clarity + score.structure_completeness
+    )
+
+
+def test_compute_ats_score_returns_ats_score_type():
+    from app.scoring.ats_scorer import compute_ats_score
+    from app.scoring.models import ATSScore
+    jd = _make_jd()
+    resume = _make_resume_fields()
+    score = compute_ats_score(resume, jd, "some resume text")
+    assert isinstance(score, ATSScore)
+
+
+def test_compute_ats_score_skills_matched_and_missing_populated():
+    from app.scoring.ats_scorer import compute_ats_score
+    jd = _make_jd(required_skills=["Python", "Kubernetes"])
+    resume = _make_resume_fields(skills=["Python"])
+    score = compute_ats_score(resume, jd, "Python developer 2020-2023")
+    assert "Python" in score.skills_matched
+    assert "Kubernetes" in score.skills_missing
+
+
+def test_compute_ats_score_empty_inputs_do_not_raise():
+    from app.scoring.ats_scorer import compute_ats_score
+    jd = _make_jd(required_skills=[], key_responsibilities=[])
+    resume = _make_resume_fields(current_title="", skills=[])
+    score = compute_ats_score(resume, jd, "")
+    assert isinstance(score.total, int)
+    assert score.total >= 0
