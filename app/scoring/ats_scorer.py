@@ -116,16 +116,59 @@ def _score_skills_coverage(
     return min(required_score + preferred_score, 30), matched, missing
 
 
+_DATE_RE = re.compile(
+    r"\b(19|20)\d{2}\b"
+    r"|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}"
+    r"|\d{4}\s*-\s*(?:present|current|\d{4})",
+    re.IGNORECASE,
+)
+_COMPANY_RE = re.compile(
+    r"\b(?:Ltd|Inc|Corp|LLC|Pvt|GmbH|Limited|Incorporated|Technologies|Solutions|Services)\b",
+    re.IGNORECASE,
+)
+_ACHIEVEMENT_RE = re.compile(
+    r"\d+\s*(?:%|x\b|X\b|\$|K\b|M\b|L\b|cr\b|lakh|crore)"
+    r"|\d{2,}\s+(?:users|customers|clients|employees|candidates|projects|teams)",
+    re.IGNORECASE,
+)
+
+
 def _score_experience_clarity(
     resume_fields: dict, resume_raw_text: str
 ) -> int:
-    """Stub — implemented in Task 4."""
-    return 0
+    """experience_clarity: 0-20 pts based on four heuristic signals."""
+    score = 0
+    if _DATE_RE.search(resume_raw_text):
+        score += 6
+    if _COMPANY_RE.search(resume_raw_text):
+        score += 5
+    if resume_fields.get("current_title", "").strip():
+        score += 5
+    if _ACHIEVEMENT_RE.search(resume_raw_text):
+        score += 4
+    return score
 
 
 def _score_structure_completeness(resume_raw_text: str) -> int:
-    """Stub — implemented in Task 4."""
-    return 0
+    """structure_completeness: 0-20 pts based on section header detection."""
+    score = 0
+    text = resume_raw_text.lower()
+
+    if re.search(r"\b(?:summary|profile|objective|about me|professional summary)\b", text):
+        score += 5
+
+    if re.search(r"\b(?:education|academic|qualification)\b", text) and re.search(
+        r"\b(?:bachelor|master|b\.?tech|mba|phd|ph\.?d|diploma|degree|b\.?e\.?|m\.?tech)\b", text
+    ):
+        score += 5
+
+    if re.search(r"\b(?:skills|technical skills|core competencies|technologies)\b", text):
+        score += 5
+
+    if re.search(r"\bcertif|\bcourses\b|\btraining\b|\bawards\b|\bachievements\b", text):
+        score += 5
+
+    return score
 
 
 def compute_ats_score(

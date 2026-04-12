@@ -200,3 +200,118 @@ def test_skills_coverage_compound_skill_plus_separator():
     score, matched, missing = _score_skills_coverage(jd, resume)
     assert score == 24
     assert missing == []
+
+
+# ---------------------------------------------------------------------------
+# experience_clarity
+# ---------------------------------------------------------------------------
+
+def test_experience_clarity_all_signals():
+    from app.scoring.ats_scorer import _score_experience_clarity
+    resume = _make_resume_fields(current_title="Senior Engineer")
+    text = (
+        "Senior Engineer at Acme Ltd 2019-2023\n"
+        "Reduced costs by 30% saving $50K annually\n"
+        "Managed team at TechCorp Inc"
+    )
+    score = _score_experience_clarity(resume, text)
+    assert score == 20
+
+
+def test_experience_clarity_no_dates():
+    from app.scoring.ats_scorer import _score_experience_clarity
+    resume = _make_resume_fields(current_title="Engineer")
+    text = "Engineer at Acme Ltd\nReduced costs by 30%"
+    score = _score_experience_clarity(resume, text)
+    assert score == 14  # 0+5+5+4
+
+
+def test_experience_clarity_no_company():
+    from app.scoring.ats_scorer import _score_experience_clarity
+    resume = _make_resume_fields(current_title="Engineer")
+    text = "Engineer 2019-2022\nIncreased revenue by 20%"
+    score = _score_experience_clarity(resume, text)
+    assert score == 15  # 6+0+5+4
+
+
+def test_experience_clarity_no_title():
+    from app.scoring.ats_scorer import _score_experience_clarity
+    resume = _make_resume_fields(current_title="")
+    text = "Software Engineer at Acme Ltd 2019-2023\nReduced costs 30%"
+    score = _score_experience_clarity(resume, text)
+    assert score == 15  # 6+5+0+4
+
+
+def test_experience_clarity_no_achievements():
+    from app.scoring.ats_scorer import _score_experience_clarity
+    resume = _make_resume_fields(current_title="Engineer")
+    text = "Engineer at Acme Ltd 2019-2022\nWorked on backend systems"
+    score = _score_experience_clarity(resume, text)
+    assert score == 16  # 6+5+5+0
+
+
+def test_experience_clarity_zero():
+    from app.scoring.ats_scorer import _score_experience_clarity
+    resume = _make_resume_fields(current_title="")
+    text = "worked on various projects and tasks"
+    score = _score_experience_clarity(resume, text)
+    assert score == 0
+
+
+def test_experience_clarity_date_formats():
+    from app.scoring.ats_scorer import _score_experience_clarity
+    resume = _make_resume_fields(current_title="")
+    # Various date formats (hyphen-dash only; en-dash omitted to avoid encoding issues)
+    for text in [
+        "Jan 2020 - Dec 2022",
+        "2019-Present",
+        "2018-2021",
+        "March 2017",
+    ]:
+        score = _score_experience_clarity(resume, text)
+        assert score >= 6, f"Expected date detection for: {text!r}"
+
+
+# ---------------------------------------------------------------------------
+# structure_completeness
+# ---------------------------------------------------------------------------
+
+def test_structure_completeness_all_sections():
+    from app.scoring.ats_scorer import _score_structure_completeness
+    text = (
+        "Summary\nExperienced engineer.\n"
+        "Education\nBachelor of Engineering 2015\n"
+        "Technical Skills\nPython, AWS\n"
+        "Certifications\nAWS Certified"
+    )
+    assert _score_structure_completeness(text) == 20
+
+
+def test_structure_completeness_no_sections():
+    from app.scoring.ats_scorer import _score_structure_completeness
+    text = "John Doe\njohn@example.com\nWorked at various companies"
+    assert _score_structure_completeness(text) == 0
+
+
+def test_structure_completeness_partial():
+    from app.scoring.ats_scorer import _score_structure_completeness
+    # Has skills + education but no summary or certifications
+    text = "Technical Skills\nPython\nEducation\nMBA from IIM"
+    score = _score_structure_completeness(text)
+    assert score == 10  # 0+5+5+0
+
+
+def test_structure_completeness_education_needs_degree_keyword():
+    from app.scoring.ats_scorer import _score_structure_completeness
+    # Has education header but no degree keyword -> no pts
+    text = "Education\nStudied at a good university"
+    assert _score_structure_completeness(text) == 0
+
+
+def test_structure_completeness_certif_prefix_match():
+    from app.scoring.ats_scorer import _score_structure_completeness
+    # "certifications", "certified", "certificate" all should match
+    for word in ["Certifications", "Certified", "Certificate"]:
+        text = f"{word}\nAWS Cloud Practitioner"
+        score = _score_structure_completeness(text)
+        assert score == 5, f"Expected certif match for: {word!r}"
