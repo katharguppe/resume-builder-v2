@@ -190,3 +190,13 @@ def test_skills_coverage_caps_at_30():
     resume = _make_resume_fields(skills=["Python", "Docker"])
     score, matched, missing = _score_skills_coverage(jd, resume)
     assert score <= 30
+
+
+def test_skills_coverage_compound_skill_plus_separator():
+    from app.scoring.ats_scorer import _score_skills_coverage
+    # "React+Redux" in resume should match "React" in JD (+ is a split delimiter)
+    jd = _make_jd(required_skills=["React", "Redux"])
+    resume = _make_resume_fields(skills=["React+Redux"])
+    score, matched, missing = _score_skills_coverage(jd, resume)
+    assert score == 24
+    assert missing == []

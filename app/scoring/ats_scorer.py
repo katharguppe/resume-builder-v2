@@ -60,15 +60,15 @@ _SKILL_ALIASES = {
 def _normalize_skill(skill: str) -> List[str]:
     """Normalize a skill string for matching.
 
-    Applies known aliases (C++ -> cplusplus, C# -> csharp), then
-    splits on / and , (not +), lowercases, and strips punctuation.
+    Applies known aliases (C++ -> cplusplus, C# -> csharp) first so that
+    the + in C++ is consumed before splitting on / + , delimiters.
     """
     if not isinstance(skill, str):
         return []
     lowered = skill.lower().strip()
     for src, dst in _SKILL_ALIASES.items():
         lowered = lowered.replace(src, dst)
-    parts = re.split(r"[/,]", lowered)
+    parts = re.split(r"[/+,]", lowered)
     return [re.sub(r"[^a-z0-9\s]", "", p).strip() for p in parts if p.strip()]
 
 
@@ -88,8 +88,8 @@ def _score_skills_coverage(
     for s in resume_skills_raw:
         parts = _normalize_skill(s)
         for part in parts:
-            # Split each part into word tokens to support substring matching
-            # e.g., "python310" -> "python310", "python310" -> words
+            # Split each normalized part into alphanumeric tokens.
+            # e.g., "python 310" -> {"python", "310"}, "nodejs" -> {"nodejs"}
             tokens = re.findall(r"[a-z0-9]+", part)
             resume_words.update(tokens)
 
