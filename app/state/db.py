@@ -385,6 +385,7 @@ class SubmissionsDB(_SqliteDB):
                     resume_photo_path TEXT,
                     jd_raw_text TEXT,
                     jd_fields_json TEXT,
+                    ats_score_json TEXT,
                     status TEXT NOT NULL DEFAULT 'PENDING',
                     revision_count INTEGER DEFAULT 0,
                     error_message TEXT,
@@ -393,6 +394,10 @@ class SubmissionsDB(_SqliteDB):
                     FOREIGN KEY (user_id) REFERENCES users(id)
                 )
             ''')
+            # Migration: add ats_score_json to existing DBs that predate Phase 3
+            existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(submissions)")}
+            if "ats_score_json" not in existing_cols:
+                conn.execute("ALTER TABLE submissions ADD COLUMN ats_score_json TEXT")
             conn.commit()
 
     def create_submission(self, user_id: int, session_token: str) -> int:
@@ -417,7 +422,8 @@ class SubmissionsDB(_SqliteDB):
 
     _SUBMISSION_UPDATE_COLUMNS = frozenset({
         "resume_raw_text", "resume_fields_json", "resume_photo_path",
-        "jd_raw_text", "jd_fields_json", "revision_count", "error_message",
+        "jd_raw_text", "jd_fields_json", "ats_score_json",
+        "revision_count", "error_message",
     })
 
     def update_submission(self, submission_id: int, updates: Dict[str, Any]):

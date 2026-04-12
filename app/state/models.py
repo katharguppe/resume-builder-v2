@@ -27,6 +27,7 @@ class SubmissionRecord:
     resume_photo_path: Optional[str]
     jd_raw_text: Optional[str]
     jd_fields_json: Optional[str]
+    ats_score_json: Optional[str]
     status: str
     revision_count: int
     error_message: Optional[str]

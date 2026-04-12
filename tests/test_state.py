@@ -238,6 +238,7 @@ def test_submission_record_fields():
         resume_photo_path=None,
         jd_raw_text="jd text",
         jd_fields_json='{"job_title": "Engineer"}',
+        ats_score_json=None,
         status="PENDING",
         revision_count=0,
         error_message=None,
