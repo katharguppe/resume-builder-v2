@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from app.llm.prompt_builder import build_finetuning_prompt, build_extraction_prompt
-from app.llm.finetuner import extract_fields, rewrite_resume, fine_tune_resume
+from app.llm.finetuner import extract_fields, rewrite_resume, fine_tune_resume, extract_resume_fields_claude, extract_jd_fields_claude
 from app.config import config
 
 
@@ -142,6 +142,50 @@ def test_rewrite_resume_failure(mock_get_client):
 
     with pytest.raises(ValueError, match="Failed to obtain valid JSON from rewrite_resume"):
         rewrite_resume("resume", "jd", "bp")
+
+
+# ── Phase 2: extract_resume_fields_claude + extract_jd_fields_claude ─────────
+
+
+def _mock_llm_response(json_str: str):
+    msg = MagicMock()
+    msg.content = [MagicMock(text=json_str)]
+    return msg
+
+
+def test_extract_resume_fields_claude_returns_dict():
+    payload = '{"candidate_name":"Alice","email":"a@b.com","phone":"555","current_title":"Engineer","skills":["Python"],"experience_summary":"5 years"}'
+    with patch("app.llm.finetuner._get_client") as mock_client:
+        mock_client.return_value.messages.create.return_value = _mock_llm_response(payload)
+        result = extract_resume_fields_claude("Alice resume text")
+    assert result["candidate_name"] == "Alice"
+    assert result["skills"] == ["Python"]
+    assert result["current_title"] == "Engineer"
+
+
+def test_extract_resume_fields_claude_retries_on_bad_json():
+    good = '{"candidate_name":"Bob","email":"","phone":"","current_title":"","skills":[],"experience_summary":""}'
+    responses = [_mock_llm_response("not json"), _mock_llm_response(good)]
+    with patch("app.llm.finetuner._get_client") as mock_client:
+        mock_client.return_value.messages.create.side_effect = responses
+        result = extract_resume_fields_claude("Bob resume text")
+    assert result["candidate_name"] == "Bob"
+
+
+def test_extract_jd_fields_claude_returns_dict():
+    payload = '{"job_title":"SWE","company":"ACME","required_skills":["Python","SQL"],"preferred_skills":[],"experience_required":"3 years","education_required":"BS","key_responsibilities":["Build APIs"]}'
+    with patch("app.llm.finetuner._get_client") as mock_client:
+        mock_client.return_value.messages.create.return_value = _mock_llm_response(payload)
+        result = extract_jd_fields_claude("We need a SWE at ACME")
+    assert result["job_title"] == "SWE"
+    assert "Python" in result["required_skills"]
+
+
+def test_extract_jd_fields_claude_raises_after_max_retries():
+    with patch("app.llm.finetuner._get_client") as mock_client:
+        mock_client.return_value.messages.create.return_value = _mock_llm_response("not valid json")
+        with pytest.raises(ValueError, match="max retries"):
+            extract_jd_fields_claude("some jd text")
 
 
 # ── fine_tune_resume backward-compat wrapper ────────────────────────────────

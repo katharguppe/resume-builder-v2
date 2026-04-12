@@ -8,6 +8,12 @@ load_dotenv()
 class Config:
     # LLM
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
+    # LLM provider selection (claude | gemini | deepseek)
+    LLM_EXTRACT_PROVIDER: str = os.getenv("LLM_EXTRACT_PROVIDER", "claude")
+    LLM_REWRITE_PROVIDER: str = os.getenv("LLM_REWRITE_PROVIDER", "claude")
+    # Provider API keys
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
     LLM_EXTRACT_MODEL: str = os.getenv("LLM_EXTRACT_MODEL", "claude-haiku-4-5-20251001")
     LLM_REWRITE_MODEL: str = os.getenv("LLM_REWRITE_MODEL", "claude-sonnet-4-6")
     # Crypto

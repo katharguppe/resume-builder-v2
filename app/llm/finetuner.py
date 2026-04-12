@@ -3,7 +3,12 @@ import logging
 import re
 import anthropic
 from app.config import config
-from app.llm.prompt_builder import build_extraction_prompt, build_finetuning_prompt
+from app.llm.prompt_builder import (
+    build_extraction_prompt,
+    build_finetuning_prompt,
+    build_resume_fields_prompt,
+    build_jd_extraction_prompt,
+)
 
 logger = logging.getLogger("llm")
 
@@ -94,3 +99,58 @@ def fine_tune_resume(resume_text: str, jd_text: str, best_practice_text: str, ca
     (the real name is extracted from resume_text by extract_fields).
     """
     return rewrite_resume(resume_text, jd_text, best_practice_text)
+
+
+def extract_resume_fields_claude(resume_text: str) -> dict:
+    """
+    v2 EXTRACT pass (Claude adapter).
+    Returns richer schema than v1 extract_fields():
+      candidate_name, email, phone, current_title, skills[], experience_summary
+    v1 extract_fields() is preserved unchanged for backward compat.
+    """
+    prompt = build_resume_fields_prompt(resume_text)
+    client = _get_client()
+
+    for attempt in range(1, config.MAX_LLM_RETRIES + 1):
+        try:
+            response = client.messages.create(
+                model=config.LLM_EXTRACT_MODEL,
+                max_tokens=512,
+                system="You are a resume parser. Respond ONLY with valid JSON. No markdown, no explanation.",
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return json.loads(_strip_markdown_fences(response.content[0].text))
+        except json.JSONDecodeError as e:
+            logger.warning(f"extract_resume_fields_claude attempt {attempt}/{config.MAX_LLM_RETRIES} bad JSON: {e}")
+            if attempt == config.MAX_LLM_RETRIES:
+                raise ValueError("Failed to obtain valid JSON from extract_resume_fields_claude after max retries")
+        except Exception as e:
+            logger.error(f"Unexpected error in extract_resume_fields_claude: {e}")
+            raise
+
+
+def extract_jd_fields_claude(jd_text: str) -> dict:
+    """
+    JD field extraction (Claude adapter).
+    Returns: job_title, company, required_skills[], preferred_skills[],
+             experience_required, education_required, key_responsibilities[]
+    """
+    prompt = build_jd_extraction_prompt(jd_text)
+    client = _get_client()
+
+    for attempt in range(1, config.MAX_LLM_RETRIES + 1):
+        try:
+            response = client.messages.create(
+                model=config.LLM_EXTRACT_MODEL,
+                max_tokens=1024,
+                system="You are a job description parser. Respond ONLY with valid JSON. No markdown, no explanation.",
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return json.loads(_strip_markdown_fences(response.content[0].text))
+        except json.JSONDecodeError as e:
+            logger.warning(f"extract_jd_fields_claude attempt {attempt}/{config.MAX_LLM_RETRIES} bad JSON: {e}")
+            if attempt == config.MAX_LLM_RETRIES:
+                raise ValueError("Failed to obtain valid JSON from extract_jd_fields_claude after max retries")
+        except Exception as e:
+            logger.error(f"Unexpected error in extract_jd_fields_claude: {e}")
+            raise
