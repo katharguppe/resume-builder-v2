@@ -119,7 +119,7 @@ def _score_skills_coverage(
 _DATE_RE = re.compile(
     r"\b(19|20)\d{2}\b"
     r"|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}"
-    r"|\d{4}\s*-\s*(?:present|current|\d{4})",
+    r"|\b\d{4}\s*-\s*(?:present|current|\d{4})",
     re.IGNORECASE,
 )
 _COMPANY_RE = re.compile(
