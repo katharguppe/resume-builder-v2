@@ -158,6 +158,13 @@ def main() -> None:
             st.switch_page("pages/3_Review.py")
         return
 
+    # ── Revision cap guard (belt-and-suspenders per CLAUDE.md §3) ──────────
+    if (submission.revision_count or 0) > MAX_REVISIONS:
+        st.warning(f"Maximum revisions ({MAX_REVISIONS}) already used.")
+        if st.button("← Back to Review"):
+            st.switch_page("pages/3_Review.py")
+        return
+
     revisions_used = submission.revision_count or 0
     st.caption(f"Submission #{sub_id} | Revision {revisions_used} of {MAX_REVISIONS}")
     st.title("Request a Revision")
