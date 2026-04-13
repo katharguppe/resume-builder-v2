@@ -33,6 +33,8 @@ class SubmissionRecord:
     error_message: Optional[str]
     created_at: Optional[str]
     updated_at: Optional[str]
+    llm_output_json: Optional[str] = None
+    output_pdf_path: Optional[str] = None
 
 class CandidateStatus(str, Enum):
     PENDING = "PENDING"

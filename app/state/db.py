@@ -398,6 +398,10 @@ class SubmissionsDB(_SqliteDB):
             existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(submissions)")}
             if "ats_score_json" not in existing_cols:
                 conn.execute("ALTER TABLE submissions ADD COLUMN ats_score_json TEXT")
+            if "llm_output_json" not in existing_cols:
+                conn.execute("ALTER TABLE submissions ADD COLUMN llm_output_json TEXT")
+            if "output_pdf_path" not in existing_cols:
+                conn.execute("ALTER TABLE submissions ADD COLUMN output_pdf_path TEXT")
             conn.commit()
 
     def create_submission(self, user_id: int, session_token: str) -> int:
@@ -423,6 +427,7 @@ class SubmissionsDB(_SqliteDB):
     _SUBMISSION_UPDATE_COLUMNS = frozenset({
         "resume_raw_text", "resume_fields_json", "resume_photo_path",
         "jd_raw_text", "jd_fields_json", "ats_score_json",
+        "llm_output_json", "output_pdf_path",
         "revision_count", "error_message",
     })
 

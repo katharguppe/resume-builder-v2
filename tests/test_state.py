@@ -248,3 +248,54 @@ def test_submission_record_fields():
     assert rec.user_id == 2
     assert rec.revision_count == 0
     assert rec.resume_photo_path is None
+
+
+def test_submission_record_has_new_fields():
+    """SubmissionRecord must accept llm_output_json and output_pdf_path."""
+    rec = SubmissionRecord(
+        id=1, user_id=2, session_token="tok",
+        resume_raw_text=None, resume_fields_json=None, resume_photo_path=None,
+        jd_raw_text=None, jd_fields_json=None, ats_score_json=None,
+        llm_output_json='{"candidate_name":"Alice"}',
+        output_pdf_path="/data/output/1_resume.pdf",
+        status="PENDING", revision_count=0,
+        error_message=None, created_at=None, updated_at=None,
+    )
+    assert rec.llm_output_json == '{"candidate_name":"Alice"}'
+    assert rec.output_pdf_path == "/data/output/1_resume.pdf"
+
+
+def test_submission_record_new_fields_default_none():
+    """New fields must be Optional with None default so existing code still works."""
+    rec = SubmissionRecord(
+        id=1, user_id=2, session_token="tok",
+        resume_raw_text=None, resume_fields_json=None, resume_photo_path=None,
+        jd_raw_text=None, jd_fields_json=None, ats_score_json=None,
+        status="PENDING", revision_count=0,
+        error_message=None, created_at=None, updated_at=None,
+    )
+    assert rec.llm_output_json is None
+    assert rec.output_pdf_path is None
+
+
+def test_new_columns_round_trip(user_and_submissions_db):
+    """llm_output_json and output_pdf_path must persist through update + fetch."""
+    user_id, subs_db = user_and_submissions_db
+    sub_id = subs_db.create_submission(user_id=user_id, session_token="tok-newcols")
+    llm_json = '{"candidate_name":"Bob","summary":"Great."}'
+    pdf_path = "/data/output/42_resume.pdf"
+    subs_db.update_submission(sub_id, {
+        "llm_output_json": llm_json,
+        "output_pdf_path": pdf_path,
+    })
+    rec = subs_db.get_submission(sub_id)
+    assert rec.llm_output_json == llm_json
+    assert rec.output_pdf_path == pdf_path
+
+
+def test_update_submission_rejects_unknown_column(user_and_submissions_db):
+    """update_submission must raise on unknown column names."""
+    user_id, subs_db = user_and_submissions_db
+    sub_id = subs_db.create_submission(user_id=user_id, session_token="tok-bad")
+    with pytest.raises(ValueError, match="unknown columns"):
+        subs_db.update_submission(sub_id, {"nonexistent_col": "value"})
