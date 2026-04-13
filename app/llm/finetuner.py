@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import anthropic
+import google.generativeai as genai
 from app.config import config
 from app.llm.prompt_builder import (
     build_extraction_prompt,
@@ -153,4 +154,56 @@ def extract_jd_fields_claude(jd_text: str) -> dict:
                 raise ValueError("Failed to obtain valid JSON from extract_jd_fields_claude after max retries")
         except Exception as e:
             logger.error(f"Unexpected error in extract_jd_fields_claude: {e}")
+            raise
+
+
+def extract_resume_fields_gemini(resume_text: str) -> dict:
+    """
+    EXTRACT pass using Gemini Flash.
+    Returns same schema as extract_resume_fields_claude.
+    """
+    genai.configure(api_key=config.GEMINI_API_KEY)
+    model = genai.GenerativeModel(config.LLM_EXTRACT_MODEL)
+    prompt = build_resume_fields_prompt(resume_text)
+
+    for attempt in range(1, config.MAX_LLM_RETRIES + 1):
+        try:
+            response = model.generate_content(prompt)
+            return json.loads(_strip_markdown_fences(response.text))
+        except json.JSONDecodeError as e:
+            logger.warning(
+                f"extract_resume_fields_gemini attempt {attempt}/{config.MAX_LLM_RETRIES} bad JSON: {e}"
+            )
+            if attempt == config.MAX_LLM_RETRIES:
+                raise ValueError(
+                    "Failed to obtain valid JSON from extract_resume_fields_gemini after max retries"
+                )
+        except Exception as e:
+            logger.error(f"Unexpected error in extract_resume_fields_gemini: {e}")
+            raise
+
+
+def extract_jd_fields_gemini(jd_text: str) -> dict:
+    """
+    JD field extraction using Gemini Flash.
+    Returns same schema as extract_jd_fields_claude.
+    """
+    genai.configure(api_key=config.GEMINI_API_KEY)
+    model = genai.GenerativeModel(config.LLM_EXTRACT_MODEL)
+    prompt = build_jd_extraction_prompt(jd_text)
+
+    for attempt in range(1, config.MAX_LLM_RETRIES + 1):
+        try:
+            response = model.generate_content(prompt)
+            return json.loads(_strip_markdown_fences(response.text))
+        except json.JSONDecodeError as e:
+            logger.warning(
+                f"extract_jd_fields_gemini attempt {attempt}/{config.MAX_LLM_RETRIES} bad JSON: {e}"
+            )
+            if attempt == config.MAX_LLM_RETRIES:
+                raise ValueError(
+                    "Failed to obtain valid JSON from extract_jd_fields_gemini after max retries"
+                )
+        except Exception as e:
+            logger.error(f"Unexpected error in extract_jd_fields_gemini: {e}")
             raise
