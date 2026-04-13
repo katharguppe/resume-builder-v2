@@ -17,6 +17,7 @@ class Config:
     LLM_EXTRACT_MODEL: str = os.getenv("LLM_EXTRACT_MODEL", "claude-haiku-4-5-20251001")
     LLM_REWRITE_MODEL: str = os.getenv("LLM_REWRITE_MODEL", "claude-sonnet-4-6")
     LLM_GEMINI_EXTRACT_MODEL: str = os.getenv("LLM_GEMINI_EXTRACT_MODEL", "gemini-2.0-flash")
+    LLM_DEEPSEEK_REWRITE_MODEL: str = os.getenv("DEEPSEEK_REWRITE_MODEL", "deepseek-chat")
     # Crypto
     ENCRYPTION_KEY: str = os.getenv("ENCRYPTION_KEY", "")
     # LibreOffice

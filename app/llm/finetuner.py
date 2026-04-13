@@ -41,6 +41,19 @@ def _get_genai_model() -> genai.GenerativeModel:
     return _genai_model
 
 
+_deepseek_client: OpenAI | None = None
+
+
+def _get_deepseek_client() -> OpenAI:
+    global _deepseek_client
+    if _deepseek_client is None:
+        _deepseek_client = OpenAI(
+            api_key=config.DEEPSEEK_API_KEY,
+            base_url="https://api.deepseek.com",
+        )
+    return _deepseek_client
+
+
 def extract_fields(resume_text: str) -> dict:
     """
     Haiku pass: extract candidate_name, email, phone from raw resume text.
@@ -230,15 +243,12 @@ def rewrite_resume_deepseek(resume_text: str, jd_text: str, best_practice: str) 
     candidate_name = fields.get("candidate_name") or "Unknown"
     prompt = build_finetuning_prompt(resume_text, jd_text, best_practice, candidate_name)
 
-    ds_client = OpenAI(
-        api_key=config.DEEPSEEK_API_KEY,
-        base_url="https://api.deepseek.com",
-    )
+    ds_client = _get_deepseek_client()
 
     for attempt in range(1, config.MAX_LLM_RETRIES + 1):
         try:
             response = ds_client.chat.completions.create(
-                model=os.getenv("DEEPSEEK_REWRITE_MODEL", "deepseek-chat"),
+                model=config.LLM_DEEPSEEK_REWRITE_MODEL,
                 max_tokens=4096,
                 messages=[
                     {

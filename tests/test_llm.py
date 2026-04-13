@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 
 from app.llm.prompt_builder import build_finetuning_prompt, build_extraction_prompt
 from app.llm.finetuner import extract_fields, rewrite_resume, fine_tune_resume, extract_resume_fields_claude, extract_jd_fields_claude, extract_resume_fields_gemini, extract_jd_fields_gemini, rewrite_resume_deepseek
-from app.config import config
+from app.config import config as app_config
 
 
 # ── prompt_builder tests ────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ def test_extract_fields_failure(mock_get_client):
     with pytest.raises(ValueError, match="Failed to obtain valid JSON from extract_fields"):
         extract_fields("resume")
 
-    assert mock_client.messages.create.call_count == config.MAX_LLM_RETRIES
+    assert mock_client.messages.create.call_count == app_config.MAX_LLM_RETRIES
 
 
 # ── rewrite_resume tests ────────────────────────────────────────────────────
@@ -137,7 +137,7 @@ def test_rewrite_resume_failure(mock_get_client):
     # extract succeeds, then Sonnet always returns bad JSON
     mock_client.messages.create.side_effect = (
         [_make_message(EXTRACT_JSON)]
-        + [_make_message("bad json")] * config.MAX_LLM_RETRIES
+        + [_make_message("bad json")] * app_config.MAX_LLM_RETRIES
     )
 
     with pytest.raises(ValueError, match="Failed to obtain valid JSON from rewrite_resume"):
@@ -287,11 +287,10 @@ def _make_deepseek_response(text: str) -> MagicMock:
 
 
 @patch("app.llm.finetuner._get_client")
-@patch("app.llm.finetuner.OpenAI")
-def test_rewrite_resume_deepseek_happy_path(mock_openai_cls, mock_get_client):
+@patch("app.llm.finetuner._get_deepseek_client")
+def test_rewrite_resume_deepseek_happy_path(mock_get_ds, mock_get_client):
     mock_ds_client = MagicMock()
-    mock_openai_cls.return_value = mock_ds_client
-    # extract_fields (Claude) still called first to get candidate name
+    mock_get_ds.return_value = mock_ds_client
     mock_get_client.return_value.messages.create.return_value = _make_message(EXTRACT_JSON)
     mock_ds_client.chat.completions.create.return_value = _make_deepseek_response(DEEPSEEK_REWRITE_JSON)
 
@@ -301,14 +300,14 @@ def test_rewrite_resume_deepseek_happy_path(mock_openai_cls, mock_get_client):
     assert result["summary"] == "Strong engineer."
     mock_ds_client.chat.completions.create.assert_called_once()
     call_kwargs = mock_ds_client.chat.completions.create.call_args.kwargs
-    assert call_kwargs["model"] == "deepseek-chat"
+    assert call_kwargs["model"] == app_config.LLM_DEEPSEEK_REWRITE_MODEL
 
 
 @patch("app.llm.finetuner._get_client")
-@patch("app.llm.finetuner.OpenAI")
-def test_rewrite_resume_deepseek_retry_then_pass(mock_openai_cls, mock_get_client):
+@patch("app.llm.finetuner._get_deepseek_client")
+def test_rewrite_resume_deepseek_retry_then_pass(mock_get_ds, mock_get_client):
     mock_ds_client = MagicMock()
-    mock_openai_cls.return_value = mock_ds_client
+    mock_get_ds.return_value = mock_ds_client
     mock_get_client.return_value.messages.create.return_value = _make_message(EXTRACT_JSON)
     mock_ds_client.chat.completions.create.side_effect = [
         _make_deepseek_response("bad json"),
@@ -321,10 +320,10 @@ def test_rewrite_resume_deepseek_retry_then_pass(mock_openai_cls, mock_get_clien
 
 
 @patch("app.llm.finetuner._get_client")
-@patch("app.llm.finetuner.OpenAI")
-def test_rewrite_resume_deepseek_raises_after_max_retries(mock_openai_cls, mock_get_client):
+@patch("app.llm.finetuner._get_deepseek_client")
+def test_rewrite_resume_deepseek_raises_after_max_retries(mock_get_ds, mock_get_client):
     mock_ds_client = MagicMock()
-    mock_openai_cls.return_value = mock_ds_client
+    mock_get_ds.return_value = mock_ds_client
     mock_get_client.return_value.messages.create.return_value = _make_message(EXTRACT_JSON)
     mock_ds_client.chat.completions.create.return_value = _make_deepseek_response("not json")
 
