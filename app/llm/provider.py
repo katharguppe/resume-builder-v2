@@ -50,13 +50,13 @@ def extract_jd_fields(jd_text: str) -> dict:
     )
 
 
-def rewrite_resume(resume_text: str, jd_text: str, best_practice: str) -> dict:
+def rewrite_resume(resume_text: str, jd_text: str, best_practice: str, revision_hint: str = "") -> dict:
     """Route resume rewriting to the configured REWRITE provider."""
     provider = os.getenv("LLM_REWRITE_PROVIDER", "claude").lower()
     if provider == "claude":
-        return rewrite_resume_claude(resume_text, jd_text, best_practice)
+        return rewrite_resume_claude(resume_text, jd_text, best_practice, revision_hint=revision_hint)
     if provider == "deepseek":
-        return rewrite_resume_deepseek(resume_text, jd_text, best_practice)
+        return rewrite_resume_deepseek(resume_text, jd_text, best_practice, revision_hint=revision_hint)
     raise NotImplementedError(
         f"REWRITE provider '{provider}' is not implemented. "
         "Set LLM_REWRITE_PROVIDER=claude or LLM_REWRITE_PROVIDER=deepseek."

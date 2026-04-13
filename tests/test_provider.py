@@ -74,7 +74,7 @@ def test_rewrite_resume_routes_to_claude(monkeypatch):
     with patch("app.llm.provider.rewrite_resume_claude", return_value=expected) as mock_fn:
         import app.llm.provider as prov
         result = prov.rewrite_resume("resume", "jd", "best practice")
-    mock_fn.assert_called_once_with("resume", "jd", "best practice")
+    mock_fn.assert_called_once_with("resume", "jd", "best practice", revision_hint="")
     assert result["summary"] == "Good."
 
 
@@ -84,7 +84,7 @@ def test_rewrite_resume_routes_to_deepseek(monkeypatch):
     with patch("app.llm.provider.rewrite_resume_deepseek", return_value=expected) as mock_fn:
         import app.llm.provider as prov
         result = prov.rewrite_resume("resume", "jd", "best practice")
-    mock_fn.assert_called_once_with("resume", "jd", "best practice")
+    mock_fn.assert_called_once_with("resume", "jd", "best practice", revision_hint="")
     assert result["summary"] == "Expert."
 
 
@@ -93,3 +93,21 @@ def test_rewrite_resume_unknown_provider_raises(monkeypatch):
     import app.llm.provider as prov
     with pytest.raises(NotImplementedError, match="unknown_llm"):
         prov.rewrite_resume("resume", "jd", "bp")
+
+
+def test_rewrite_resume_passes_hint_to_claude(monkeypatch):
+    monkeypatch.setenv("LLM_REWRITE_PROVIDER", "claude")
+    expected = {"candidate_name": "Alice", "summary": "Revised."}
+    with patch("app.llm.provider.rewrite_resume_claude", return_value=expected) as mock_fn:
+        import app.llm.provider as prov
+        prov.rewrite_resume("resume", "jd", "bp", revision_hint="Focus on Python skills")
+    mock_fn.assert_called_once_with("resume", "jd", "bp", revision_hint="Focus on Python skills")
+
+
+def test_rewrite_resume_passes_hint_to_deepseek(monkeypatch):
+    monkeypatch.setenv("LLM_REWRITE_PROVIDER", "deepseek")
+    expected = {"candidate_name": "Bob", "summary": "Revised."}
+    with patch("app.llm.provider.rewrite_resume_deepseek", return_value=expected) as mock_fn:
+        import app.llm.provider as prov
+        prov.rewrite_resume("resume", "jd", "bp", revision_hint="Focus on Python skills")
+    mock_fn.assert_called_once_with("resume", "jd", "bp", revision_hint="Focus on Python skills")
