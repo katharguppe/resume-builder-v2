@@ -394,7 +394,8 @@ class SubmissionsDB(_SqliteDB):
                     FOREIGN KEY (user_id) REFERENCES users(id)
                 )
             ''')
-            # Migration: add ats_score_json to existing DBs that predate Phase 3
+            # Migrations: add columns to existing DBs created before each phase
+            # Phase 3: ats_score_json | Phase 4: llm_output_json, output_pdf_path
             existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(submissions)")}
             if "ats_score_json" not in existing_cols:
                 conn.execute("ALTER TABLE submissions ADD COLUMN ats_score_json TEXT")
