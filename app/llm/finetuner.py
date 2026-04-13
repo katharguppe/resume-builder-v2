@@ -1,8 +1,10 @@
 import json
 import logging
+import os
 import re
 import anthropic
 import google.generativeai as genai
+from openai import OpenAI
 from app.config import config
 from app.llm.prompt_builder import (
     build_extraction_prompt,
@@ -215,4 +217,50 @@ def extract_jd_fields_gemini(jd_text: str) -> dict:
                 )
         except Exception as e:
             logger.error(f"Unexpected error in extract_jd_fields_gemini: {e}")
+            raise
+
+
+def rewrite_resume_deepseek(resume_text: str, jd_text: str, best_practice: str) -> dict:
+    """
+    REWRITE pass using DeepSeek V3 (OpenAI-compatible API).
+    Same prompt schema and output format as rewrite_resume (Claude).
+    Calls extract_fields (Claude Haiku) first to get candidate name.
+    """
+    fields = extract_fields(resume_text)
+    candidate_name = fields.get("candidate_name") or "Unknown"
+    prompt = build_finetuning_prompt(resume_text, jd_text, best_practice, candidate_name)
+
+    ds_client = OpenAI(
+        api_key=config.DEEPSEEK_API_KEY,
+        base_url="https://api.deepseek.com",
+    )
+
+    for attempt in range(1, config.MAX_LLM_RETRIES + 1):
+        try:
+            response = ds_client.chat.completions.create(
+                model=os.getenv("DEEPSEEK_REWRITE_MODEL", "deepseek-chat"),
+                max_tokens=4096,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are an expert resume writer. "
+                            "Respond ONLY with valid JSON matching the specified schema. "
+                            "No markdown, no explanation."
+                        ),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            return json.loads(_strip_markdown_fences(response.choices[0].message.content))
+        except json.JSONDecodeError as e:
+            logger.warning(
+                f"rewrite_resume_deepseek attempt {attempt}/{config.MAX_LLM_RETRIES} bad JSON: {e}"
+            )
+            if attempt == config.MAX_LLM_RETRIES:
+                raise ValueError(
+                    "Failed to obtain valid JSON from rewrite_resume_deepseek after max retries"
+                )
+        except Exception as e:
+            logger.error(f"Unexpected error in rewrite_resume_deepseek: {e}")
             raise

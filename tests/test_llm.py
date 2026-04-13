@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from app.llm.prompt_builder import build_finetuning_prompt, build_extraction_prompt
-from app.llm.finetuner import extract_fields, rewrite_resume, fine_tune_resume, extract_resume_fields_claude, extract_jd_fields_claude, extract_resume_fields_gemini, extract_jd_fields_gemini
+from app.llm.finetuner import extract_fields, rewrite_resume, fine_tune_resume, extract_resume_fields_claude, extract_jd_fields_claude, extract_resume_fields_gemini, extract_jd_fields_gemini, rewrite_resume_deepseek
 from app.config import config
 
 
@@ -263,3 +263,70 @@ def test_extract_jd_fields_gemini_happy_path(mock_get_model):
     result = extract_jd_fields_gemini("SWE role at ACME")
     assert result["job_title"] == "SWE"
     assert "Python" in result["required_skills"]
+
+
+# ── DeepSeek V3 rewrite adapter ─────────────────────────────────────────────
+
+DEEPSEEK_REWRITE_JSON = json.dumps({
+    "candidate_name": "Alice",
+    "contact": {"email": "a@b.com", "phone": "555", "linkedin": ""},
+    "summary": "Strong engineer.",
+    "experience": [],
+    "education": [],
+    "skills": ["Python"],
+    "missing_fields": [],
+})
+
+
+def _make_deepseek_response(text: str) -> MagicMock:
+    choice = MagicMock()
+    choice.message.content = text
+    resp = MagicMock()
+    resp.choices = [choice]
+    return resp
+
+
+@patch("app.llm.finetuner._get_client")
+@patch("app.llm.finetuner.OpenAI")
+def test_rewrite_resume_deepseek_happy_path(mock_openai_cls, mock_get_client):
+    mock_ds_client = MagicMock()
+    mock_openai_cls.return_value = mock_ds_client
+    # extract_fields (Claude) still called first to get candidate name
+    mock_get_client.return_value.messages.create.return_value = _make_message(EXTRACT_JSON)
+    mock_ds_client.chat.completions.create.return_value = _make_deepseek_response(DEEPSEEK_REWRITE_JSON)
+
+    result = rewrite_resume_deepseek("Alice resume", "SWE JD", "best practice")
+
+    assert result["candidate_name"] == "Alice"
+    assert result["summary"] == "Strong engineer."
+    mock_ds_client.chat.completions.create.assert_called_once()
+    call_kwargs = mock_ds_client.chat.completions.create.call_args.kwargs
+    assert call_kwargs["model"] == "deepseek-chat"
+
+
+@patch("app.llm.finetuner._get_client")
+@patch("app.llm.finetuner.OpenAI")
+def test_rewrite_resume_deepseek_retry_then_pass(mock_openai_cls, mock_get_client):
+    mock_ds_client = MagicMock()
+    mock_openai_cls.return_value = mock_ds_client
+    mock_get_client.return_value.messages.create.return_value = _make_message(EXTRACT_JSON)
+    mock_ds_client.chat.completions.create.side_effect = [
+        _make_deepseek_response("bad json"),
+        _make_deepseek_response(DEEPSEEK_REWRITE_JSON),
+    ]
+
+    result = rewrite_resume_deepseek("resume", "jd", "bp")
+    assert result["candidate_name"] == "Alice"
+    assert mock_ds_client.chat.completions.create.call_count == 2
+
+
+@patch("app.llm.finetuner._get_client")
+@patch("app.llm.finetuner.OpenAI")
+def test_rewrite_resume_deepseek_raises_after_max_retries(mock_openai_cls, mock_get_client):
+    mock_ds_client = MagicMock()
+    mock_openai_cls.return_value = mock_ds_client
+    mock_get_client.return_value.messages.create.return_value = _make_message(EXTRACT_JSON)
+    mock_ds_client.chat.completions.create.return_value = _make_deepseek_response("not json")
+
+    with pytest.raises(ValueError, match="rewrite_resume_deepseek"):
+        rewrite_resume_deepseek("resume", "jd", "bp")
