@@ -292,8 +292,7 @@ def main() -> None:
                     "revision_count": (submission.revision_count or 0) + 1,
                 })
                 subs_db.set_status(submission.id, SubmissionStatus.REVISION_REQUESTED)
-                st.info("Revision requested. Revision flow will be available in Phase 5.")
-                st.rerun()
+                st.switch_page("pages/4_Revise.py")
         else:
             st.caption(f"No revisions remaining (max {MAX_REVISIONS} used).")
 
