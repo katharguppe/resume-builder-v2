@@ -82,7 +82,7 @@ def extract_fields(resume_text: str) -> dict:
             raise
 
 
-def rewrite_resume(resume_text: str, jd_text: str, best_practice: str) -> dict:
+def rewrite_resume(resume_text: str, jd_text: str, best_practice: str, revision_hint: str = "") -> dict:
     """
     Sonnet pass: rewrite resume aligned to JD using best-practice format.
     Calls extract_fields (Haiku) first to get candidate name, then calls Sonnet.
@@ -93,7 +93,7 @@ def rewrite_resume(resume_text: str, jd_text: str, best_practice: str) -> dict:
     fields = extract_fields(resume_text)
     candidate_name = fields.get("candidate_name") or "Unknown"
 
-    prompt = build_finetuning_prompt(resume_text, jd_text, best_practice, candidate_name)
+    prompt = build_finetuning_prompt(resume_text, jd_text, best_practice, candidate_name, revision_hint=revision_hint)
     client = _get_client()
 
     for attempt in range(1, config.MAX_LLM_RETRIES + 1):
@@ -233,7 +233,7 @@ def extract_jd_fields_gemini(jd_text: str) -> dict:
             raise
 
 
-def rewrite_resume_deepseek(resume_text: str, jd_text: str, best_practice: str) -> dict:
+def rewrite_resume_deepseek(resume_text: str, jd_text: str, best_practice: str, revision_hint: str = "") -> dict:
     """
     REWRITE pass using DeepSeek V3 (OpenAI-compatible API).
     Same prompt schema and output format as rewrite_resume (Claude).
@@ -241,7 +241,7 @@ def rewrite_resume_deepseek(resume_text: str, jd_text: str, best_practice: str) 
     """
     fields = extract_fields(resume_text)
     candidate_name = fields.get("candidate_name") or "Unknown"
-    prompt = build_finetuning_prompt(resume_text, jd_text, best_practice, candidate_name)
+    prompt = build_finetuning_prompt(resume_text, jd_text, best_practice, candidate_name, revision_hint=revision_hint)
 
     ds_client = _get_deepseek_client()
 
