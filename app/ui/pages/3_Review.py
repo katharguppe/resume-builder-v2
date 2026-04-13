@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 DB_PATH = Path(os.getenv("AUTH_DB_PATH", "resume_builder.db"))
 OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", "data/output"))
+MAX_REVISIONS = 3  # CLAUDE.md §3: revision cap per session
 
 
 # ── Pipeline helper (testable, no st.* calls) ─────────────────────────────
@@ -119,9 +120,9 @@ def _render_ats_panel(ats_dict: dict) -> None:
     )
 
 
-def _render_missing_panel(resume_fields: dict) -> None:
+def _render_missing_panel(resume_fields: dict, resume_raw_text: str) -> None:
     """Render missing info panel (severity ranked) below ATS score."""
-    missing_items = detect_missing(resume_fields)
+    missing_items = detect_missing(resume_fields, resume_raw_text)
     if not missing_items:
         st.success("No critical missing information detected.")
         return
@@ -255,7 +256,7 @@ def main() -> None:
     with col_left:
         _render_ats_panel(ats_dict)
         st.divider()
-        _render_missing_panel(resume_fields)
+        _render_missing_panel(resume_fields, submission.resume_raw_text or "")
 
     with col_right:
         _render_jd_alignment(llm_output, jd_fields)
@@ -277,7 +278,7 @@ def main() -> None:
 
     # ── Action bar ─────────────────────────────────────────────────────────
     st.divider()
-    revisions_remaining = 3 - (submission.revision_count or 0)
+    revisions_remaining = MAX_REVISIONS - (submission.revision_count or 0)
     col_back, col_revise, col_accept = st.columns([1, 2, 1])
 
     with col_back:
@@ -294,7 +295,7 @@ def main() -> None:
                 st.info("Revision requested. Revision flow will be available in Phase 5.")
                 st.rerun()
         else:
-            st.caption("No revisions remaining (max 3 used).")
+            st.caption(f"No revisions remaining (max {MAX_REVISIONS} used).")
 
     with col_accept:
         if st.button("✓ Accept Draft", type="primary"):

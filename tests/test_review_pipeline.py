@@ -11,7 +11,7 @@ import dataclasses
 import pytest
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch, patch as _patch
+from unittest.mock import MagicMock, patch
 
 # ── Stub streamlit before any page import ──────────────────────────────────
 _st_mock = MagicMock()
@@ -151,11 +151,10 @@ def test_pipeline_calls_rewrite_with_best_practice(db_and_submission):
     mock_ats_val = ATSScore(total=70, keyword_match=20, skills_coverage=20,
                             experience_clarity=15, structure_completeness=15,
                             keyword_matched=[], skills_matched=[], skills_missing=[])
-    from unittest.mock import patch as _patch
-    with _patch.object(_review_mod, "search_best_practice", return_value="Generic best practice") as mock_bp, \
-         _patch.object(_review_mod, "rewrite_resume", return_value=LLM_OUTPUT) as mock_rewrite, \
-         _patch.object(_review_mod, "compute_ats_score", return_value=mock_ats_val), \
-         _patch.object(_review_mod, "generate_resume_pdf", return_value=True):
+    with patch.object(_review_mod, "search_best_practice", return_value="Generic best practice") as mock_bp, \
+         patch.object(_review_mod, "rewrite_resume", return_value=LLM_OUTPUT) as mock_rewrite, \
+         patch.object(_review_mod, "compute_ats_score", return_value=mock_ats_val), \
+         patch.object(_review_mod, "generate_resume_pdf", return_value=True):
         _run_rewrite_pipeline(submission, subs_db, output_dir)
 
     mock_bp.assert_called_once_with("Senior Engineer")
