@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from app.llm.prompt_builder import build_finetuning_prompt, build_extraction_prompt
-from app.llm.finetuner import extract_fields, rewrite_resume, fine_tune_resume, extract_resume_fields_claude, extract_jd_fields_claude
+from app.llm.finetuner import extract_fields, rewrite_resume, fine_tune_resume, extract_resume_fields_claude, extract_jd_fields_claude, extract_resume_fields_gemini, extract_jd_fields_gemini
 from app.config import config
 
 
@@ -206,8 +206,6 @@ def test_fine_tune_resume_compat(mock_get_client):
 
 # ── Gemini Flash extract adapters ───────────────────────────────────────────
 
-from app.llm.finetuner import extract_resume_fields_gemini, extract_jd_fields_gemini
-
 
 def _make_gemini_response(text: str) -> MagicMock:
     resp = MagicMock()
@@ -219,23 +217,23 @@ RESUME_FIELDS_JSON = '{"candidate_name":"Alice","email":"a@b.com","phone":"555",
 JD_FIELDS_JSON = '{"job_title":"SWE","company":"ACME","required_skills":["Python"],"preferred_skills":[],"experience_required":"3y","education_required":"BS","key_responsibilities":["Build APIs"]}'
 
 
-@patch("app.llm.finetuner.genai")
-def test_extract_resume_fields_gemini_happy_path(mock_genai):
+@patch("app.llm.finetuner._get_genai_model")
+def test_extract_resume_fields_gemini_happy_path(mock_get_model):
     mock_model = MagicMock()
-    mock_genai.GenerativeModel.return_value = mock_model
+    mock_get_model.return_value = mock_model
     mock_model.generate_content.return_value = _make_gemini_response(RESUME_FIELDS_JSON)
 
     result = extract_resume_fields_gemini("Alice resume text")
 
-    mock_genai.configure.assert_called_once()
+    mock_get_model.assert_called_once()
     assert result["candidate_name"] == "Alice"
     assert result["skills"] == ["Python"]
 
 
-@patch("app.llm.finetuner.genai")
-def test_extract_resume_fields_gemini_retry_then_pass(mock_genai):
+@patch("app.llm.finetuner._get_genai_model")
+def test_extract_resume_fields_gemini_retry_then_pass(mock_get_model):
     mock_model = MagicMock()
-    mock_genai.GenerativeModel.return_value = mock_model
+    mock_get_model.return_value = mock_model
     mock_model.generate_content.side_effect = [
         _make_gemini_response("not json"),
         _make_gemini_response(RESUME_FIELDS_JSON),
@@ -246,20 +244,20 @@ def test_extract_resume_fields_gemini_retry_then_pass(mock_genai):
     assert mock_model.generate_content.call_count == 2
 
 
-@patch("app.llm.finetuner.genai")
-def test_extract_resume_fields_gemini_raises_after_max_retries(mock_genai):
+@patch("app.llm.finetuner._get_genai_model")
+def test_extract_resume_fields_gemini_raises_after_max_retries(mock_get_model):
     mock_model = MagicMock()
-    mock_genai.GenerativeModel.return_value = mock_model
+    mock_get_model.return_value = mock_model
     mock_model.generate_content.return_value = _make_gemini_response("bad json always")
 
     with pytest.raises(ValueError, match="extract_resume_fields_gemini"):
         extract_resume_fields_gemini("resume")
 
 
-@patch("app.llm.finetuner.genai")
-def test_extract_jd_fields_gemini_happy_path(mock_genai):
+@patch("app.llm.finetuner._get_genai_model")
+def test_extract_jd_fields_gemini_happy_path(mock_get_model):
     mock_model = MagicMock()
-    mock_genai.GenerativeModel.return_value = mock_model
+    mock_get_model.return_value = mock_model
     mock_model.generate_content.return_value = _make_gemini_response(JD_FIELDS_JSON)
 
     result = extract_jd_fields_gemini("SWE role at ACME")

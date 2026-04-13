@@ -28,6 +28,17 @@ def _get_client() -> anthropic.Anthropic:
     return _client
 
 
+_genai_model: genai.GenerativeModel | None = None
+
+
+def _get_genai_model() -> genai.GenerativeModel:
+    global _genai_model
+    if _genai_model is None:
+        genai.configure(api_key=config.GEMINI_API_KEY)
+        _genai_model = genai.GenerativeModel(config.LLM_GEMINI_EXTRACT_MODEL)
+    return _genai_model
+
+
 def extract_fields(resume_text: str) -> dict:
     """
     Haiku pass: extract candidate_name, email, phone from raw resume text.
@@ -162,8 +173,7 @@ def extract_resume_fields_gemini(resume_text: str) -> dict:
     EXTRACT pass using Gemini Flash.
     Returns same schema as extract_resume_fields_claude.
     """
-    genai.configure(api_key=config.GEMINI_API_KEY)
-    model = genai.GenerativeModel(config.LLM_EXTRACT_MODEL)
+    model = _get_genai_model()
     prompt = build_resume_fields_prompt(resume_text)
 
     for attempt in range(1, config.MAX_LLM_RETRIES + 1):
@@ -188,8 +198,7 @@ def extract_jd_fields_gemini(jd_text: str) -> dict:
     JD field extraction using Gemini Flash.
     Returns same schema as extract_jd_fields_claude.
     """
-    genai.configure(api_key=config.GEMINI_API_KEY)
-    model = genai.GenerativeModel(config.LLM_EXTRACT_MODEL)
+    model = _get_genai_model()
     prompt = build_jd_extraction_prompt(jd_text)
 
     for attempt in range(1, config.MAX_LLM_RETRIES + 1):
