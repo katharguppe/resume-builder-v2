@@ -55,14 +55,14 @@ def test_extract_jd_fields_routes_to_gemini(monkeypatch):
 def test_extract_resume_fields_unknown_provider_raises(monkeypatch):
     monkeypatch.setenv("LLM_EXTRACT_PROVIDER", "unknown_provider")
     import app.llm.provider as prov
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(NotImplementedError, match="unknown_provider"):
         prov.extract_resume_fields("any text")
 
 
 def test_extract_jd_fields_unknown_provider_raises(monkeypatch):
     monkeypatch.setenv("LLM_EXTRACT_PROVIDER", "unknown_provider")
     import app.llm.provider as prov
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(NotImplementedError, match="unknown_provider"):
         prov.extract_jd_fields("any jd")
 
 
