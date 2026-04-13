@@ -61,7 +61,13 @@ Use empty string "" for scalar fields not found. Use [] for skills if none found
 {resume_text}""".strip()
 
 
-def build_finetuning_prompt(resume_text: str, jd_text: str, best_practice_text: str, candidate_name: str) -> str:
+def build_finetuning_prompt(
+    resume_text: str,
+    jd_text: str,
+    best_practice_text: str,
+    candidate_name: str,
+    revision_hint: str = "",
+) -> str:
     """
     Builds the structured prompt for Claude Sonnet to fine-tune a candidate's resume against a JD.
     """
@@ -108,4 +114,7 @@ You must respond with ONLY valid JSON matching this schema exactly. No markdown 
   "missing_fields": ["string - any field that was blank or unclear in source resume"]
 }}
 """
+    if revision_hint.strip():
+        prompt += f"\n\n=== REVISION REQUEST ===\n{revision_hint.strip()}\nApply this specific feedback when rewriting the resume."
+
     return prompt.strip()

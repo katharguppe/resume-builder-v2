@@ -1,6 +1,7 @@
 from app.llm.prompt_builder import (
     build_jd_extraction_prompt,
     build_resume_fields_prompt,
+    build_finetuning_prompt,
 )
 
 
@@ -32,3 +33,19 @@ def test_build_resume_fields_prompt_returns_string():
     result = build_resume_fields_prompt("any resume text")
     assert isinstance(result, str)
     assert len(result) > 50
+
+
+def test_build_finetuning_prompt_includes_revision_hint():
+    prompt = build_finetuning_prompt(
+        "resume text", "jd text", "best practice", "Alice",
+        revision_hint="Make the summary shorter and more direct.",
+    )
+    assert "REVISION REQUEST" in prompt
+    assert "Make the summary shorter and more direct." in prompt
+
+
+def test_build_finetuning_prompt_no_hint_unchanged():
+    prompt_default = build_finetuning_prompt("resume", "jd", "bp", "Alice")
+    prompt_empty = build_finetuning_prompt("resume", "jd", "bp", "Alice", revision_hint="")
+    assert "REVISION REQUEST" not in prompt_default
+    assert prompt_default == prompt_empty
