@@ -52,67 +52,53 @@ def test_group_by_severity_multiple_same():
 def test_render_missing_panel_no_items_calls_success(monkeypatch):
     """When detect_missing returns [], should call st.success."""
     import app.ui.components.missing_panel as mod
-    import streamlit as st
+    from unittest.mock import MagicMock
 
-    success_calls = []
+    mock_st = MagicMock()
+    monkeypatch.setattr(mod, "st", mock_st)
     monkeypatch.setattr(mod, "detect_missing", lambda *a: [])
-    monkeypatch.setattr(st, "success", lambda msg: success_calls.append(msg))
 
     mod.render_missing_panel({}, "")
-    assert len(success_calls) == 1
-    assert "No critical" in success_calls[0]
+    mock_st.success.assert_called_once()
+    assert "No critical" in mock_st.success.call_args[0][0]
 
 
 def test_render_missing_panel_calls_expander_for_high(monkeypatch):
     """When HIGH items exist, st.expander must be called."""
     import app.ui.components.missing_panel as mod
-    import streamlit as st
     from unittest.mock import MagicMock
 
     item = _item("work_dates", "HIGH", "Experience")
     monkeypatch.setattr(mod, "detect_missing", lambda *a: [item])
 
-    expander_titles = []
-    mock_ctx = MagicMock()
-    mock_ctx.__enter__ = MagicMock(return_value=None)
-    mock_ctx.__exit__ = MagicMock(return_value=False)
-
-    def fake_expander(title, expanded=False):
-        expander_titles.append(title)
-        return mock_ctx
-
-    monkeypatch.setattr(st, "expander", fake_expander)
-    monkeypatch.setattr(st, "columns", lambda spec: [MagicMock(), MagicMock()])
-    monkeypatch.setattr(st, "button", lambda *a, **kw: False)
-    monkeypatch.setattr(st, "markdown", lambda *a, **kw: None)
+    mock_st = MagicMock()
+    mock_st.columns.return_value = [MagicMock(), MagicMock()]
+    mock_st.button.return_value = False
+    monkeypatch.setattr(mod, "st", mock_st)
 
     mod.render_missing_panel({}, "text")
+
+    expander_titles = [str(call.args[0]) for call in mock_st.expander.call_args_list]
     assert any("High Priority" in t for t in expander_titles)
 
 
 def test_render_missing_panel_key_prefix_in_button(monkeypatch):
     """Button key must include key_prefix to avoid widget ID collisions."""
     import app.ui.components.missing_panel as mod
-    import streamlit as st
     from unittest.mock import MagicMock
 
     item = _item("work_dates", "HIGH", "Experience")
     monkeypatch.setattr(mod, "detect_missing", lambda *a: [item])
 
-    button_keys = []
-
-    mock_ctx = MagicMock()
-    mock_ctx.__enter__ = MagicMock(return_value=None)
-    mock_ctx.__exit__ = MagicMock(return_value=False)
-    monkeypatch.setattr(st, "expander", lambda *a, **kw: mock_ctx)
-    monkeypatch.setattr(st, "columns", lambda spec: [MagicMock(), MagicMock()])
-
-    def fake_button(label, key=None):
-        button_keys.append(key)
-        return False
-
-    monkeypatch.setattr(st, "button", fake_button)
-    monkeypatch.setattr(st, "markdown", lambda *a, **kw: None)
+    mock_st = MagicMock()
+    mock_st.columns.return_value = [MagicMock(), MagicMock()]
+    mock_st.button.return_value = False
+    monkeypatch.setattr(mod, "st", mock_st)
 
     mod.render_missing_panel({}, "text", key_prefix="review_")
+
+    button_keys = [
+        call.kwargs.get("key", call.args[1] if len(call.args) > 1 else None)
+        for call in mock_st.button.call_args_list
+    ]
     assert any(k and k.startswith("review_") for k in button_keys)
