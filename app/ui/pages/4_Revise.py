@@ -11,6 +11,7 @@ from pathlib import Path
 import streamlit as st
 
 from app.best_practice.searcher import search_best_practice
+from app.ui.components.missing_panel import render_missing_panel
 from app.composer.pdf_writer import generate_resume_pdf
 from app.llm.provider import rewrite_resume
 from app.scoring import compute_ats_score
@@ -168,6 +169,12 @@ def main() -> None:
     revisions_used = submission.revision_count or 0
     st.caption(f"Submission #{sub_id} | Revision {revisions_used} of {MAX_REVISIONS}")
     st.title("Request a Revision")
+
+    # ── Missing info panel ──────────────────────────────────────────────────
+    resume_fields = json.loads(submission.resume_fields_json or "{}")
+    with st.expander("Missing Info — what to address in your revision", expanded=True):
+        render_missing_panel(resume_fields, submission.resume_raw_text or "", key_prefix="revise_")
+    st.divider()
 
     # ── Current draft (collapsible) ─────────────────────────────────────────
     llm_output = json.loads(submission.llm_output_json or "{}")
