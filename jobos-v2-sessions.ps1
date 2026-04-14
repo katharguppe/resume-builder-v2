@@ -382,7 +382,16 @@ Before writing any code:
         prompt = @'
 Stack: Python 3.13, Streamlit, app/llm/ (EXTRACT provider)
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
+Branch: feature/phase-02-upload-parse (230 tests passing)
 Task file: tasks/PHASE-07-skills-section-builder.md
+
+PHASE 6 IS COMPLETE. Do NOT redo it.
+  app/scoring/missing_info.py: section field added, 6 items with sections assigned.
+  app/ui/components/missing_panel.py: severity-ranked collapsible panel, Focus button,
+    highlight_section session state, key_prefix support.
+  3_Review.py: panel wired in, _render_section_highlight callouts on all 5 sections.
+  4_Revise.py: missing panel shown above revision form.
+  230 tests passing (baseline was 214 + 16 new).
 
 PHASE 7: Skills Section Builder - grouped suggest + edit
 
@@ -392,24 +401,25 @@ What to build:
   app/skills/__init__.py
   app/skills/grouper.py  - group_skills(raw_skills: List[str]) -> SkillGroups
                            Groups: Core | Tools | Functional | Domain
-  app/skills/suggester.py - suggest_skills(jd_fields, resume_fields) -> suggestions
+  app/skills/suggester.py - suggest_skills(jd_fields, resume_fields) -> List[str]
                             Uses EXTRACT provider (Gemini Flash) for JD-based suggestions
 
   app/ui/pages/5_Skills.py:
-    - Show current skills grouped
-    - Show JD-suggested missing skills (highlighted)
+    - Show current skills grouped (from llm_output_json skills list)
+    - Show JD-suggested missing skills (highlighted, from suggester)
     - Candidate can: add / remove / reclassify skills
-    - [Save Skills] updates session in DB
+    - [Save Skills] persists updated skills list to submission in DB
 
 Rules:
   - Suggestions are hints, not auto-additions - candidate controls final list
-  - Skills section in PDF composer is updated from DB, not re-run from scratch
+  - Skills update stored in submission record (llm_output_json skills key)
   - Keep grouper logic simple: keyword matching to known group lists first, LLM fallback
+  - Use python -m pytest (not bare pytest) for all test runs
 
 Before writing any code:
   1. Read app/llm/finetuner.py (understand extract_fields output structure)
   2. Read app/composer/pdf_writer.py (skills section layout)
-  3. Present grouper design
+  3. Present grouper design + group keyword lists
   4. Wait for approval
 '@
     }
