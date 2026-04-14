@@ -1,9 +1,30 @@
+import re
 import sqlite3
 import contextlib
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
-from .models import CandidateStatus, CandidateRecord, ConfigRecord
+from .models import (
+    CandidateStatus, CandidateRecord, ConfigRecord,
+    SubmissionStatus, SubmissionRecord,
+)
+
+
+class _SqliteDB:
+    """Shared base: WAL-mode SQLite connection context manager."""
+
+    def __init__(self, db_path: Path):
+        self.db_path = db_path
+
+    @contextlib.contextmanager
+    def _get_connection(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+        finally:
+            conn.close()
+
 
 VALID_TRANSITIONS = {
     CandidateStatus.PENDING: [CandidateStatus.PROCESSING],
@@ -15,19 +36,10 @@ VALID_TRANSITIONS = {
     CandidateStatus.PAYMENT_CONFIRMED: [CandidateStatus.OUTPUT_SENT]
 }
 
-class StateDB:
+class StateDB(_SqliteDB):
     def __init__(self, db_path: Path):
-        self.db_path = db_path
+        super().__init__(db_path)
         self._init_db()
-
-    @contextlib.contextmanager
-    def _get_connection(self):
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        try:
-            yield conn
-        finally:
-            conn.close()
 
     def _init_db(self):
         with self._get_connection() as conn:
@@ -186,3 +198,271 @@ class StateDB:
                 values = list(config_data.values())
                 conn.execute(f"INSERT INTO recruiter_config (id, {columns}) VALUES (1, {placeholders})", values)
             conn.commit()
+
+
+class AuthDB(_SqliteDB):
+    def __init__(self, db_path: Path):
+        super().__init__(db_path)
+        self._init_db()
+
+    def _init_db(self):
+        with self._get_connection() as conn:
+            conn.execute('PRAGMA journal_mode=WAL')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT NOT NULL UNIQUE,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    last_login_at DATETIME
+                )
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS otp_codes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT NOT NULL,
+                    code TEXT NOT NULL,
+                    expires_at DATETIME NOT NULL,
+                    used INTEGER DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS sessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    email TEXT NOT NULL,
+                    token TEXT NOT NULL UNIQUE,
+                    expires_at DATETIME NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            ''')
+            conn.commit()
+
+    def create_user(self, email: str) -> int:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+            row = cursor.fetchone()
+            if row:
+                return row["id"]
+            cursor.execute(
+                "INSERT INTO users (email) VALUES (?)", (email,)
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    def get_user_by_email(self, email: str):
+        from app.auth.models import UserRecord
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return UserRecord(**dict(row))
+
+    def update_last_login(self, email: str):
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE email = ?",
+                (email,)
+            )
+            conn.commit()
+
+    @staticmethod
+    def _normalise_dt(dt_str: str) -> str:
+        """Convert ISO 8601 datetime string to SQLite-compatible format (YYYY-MM-DD HH:MM:SS UTC).
+
+        Precondition: dt_str must be a UTC timestamp. Non-UTC offsets and naive
+        datetime strings (no offset) will raise ValueError.
+        """
+        # Reject non-UTC offsets to prevent silent wrong expiry comparisons
+        if re.search(r"[+-](?!00:00)\d{2}:\d{2}$", dt_str):
+            raise ValueError(
+                f"_normalise_dt requires a UTC timestamp, got offset: {dt_str!r}"
+            )
+        # Reject naive datetime strings (no UTC offset marker at all)
+        if not any(dt_str.endswith(s) for s in ("+00:00", "-00:00", "Z")):
+            raise ValueError(
+                f"_normalise_dt requires a UTC timestamp (missing offset): {dt_str!r}"
+            )
+        # Strip UTC indicators and T separator
+        for suffix in ("+00:00", "-00:00", "Z"):
+            if dt_str.endswith(suffix):
+                dt_str = dt_str[: -len(suffix)]
+                break
+        dt_str = re.sub(r"[+-]\d{2}:\d{2}$", "", dt_str)
+        return dt_str.replace("T", " ")
+
+    def store_otp(self, email: str, code: str, expires_at: str) -> int:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            # Invalidate any prior unused OTPs for this email (one active OTP per window)
+            cursor.execute(
+                "UPDATE otp_codes SET used = 1 WHERE email = ? AND used = 0",
+                (email,)
+            )
+            cursor.execute(
+                "INSERT INTO otp_codes (email, code, expires_at) VALUES (?, ?, ?)",
+                (email, code, self._normalise_dt(expires_at))
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    def get_valid_otp(self, email: str):
+        from app.auth.models import OTPRecord
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """SELECT * FROM otp_codes
+                   WHERE email = ? AND used = 0
+                     AND expires_at > datetime('now')
+                   ORDER BY id DESC LIMIT 1""",
+                (email,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return OTPRecord(**dict(row))
+
+    def mark_otp_used(self, otp_id: int):
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE otp_codes SET used = 1 WHERE id = ?", (otp_id,)
+            )
+            conn.commit()
+
+    def create_session(self, user_id: int, email: str, token: str, expires_at: str):
+        with self._get_connection() as conn:
+            conn.execute(
+                "INSERT INTO sessions (user_id, email, token, expires_at) VALUES (?, ?, ?, ?)",
+                (user_id, email, token, self._normalise_dt(expires_at))
+            )
+            conn.commit()
+
+    def get_session(self, token: str):
+        from app.auth.models import SessionRecord
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """SELECT * FROM sessions
+                   WHERE token = ? AND expires_at > datetime('now')""",
+                (token,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return SessionRecord(**dict(row))
+
+    def expire_session(self, token: str):
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE sessions SET expires_at = datetime('now', '-1 second') WHERE token = ?",
+                (token,)
+            )
+            conn.commit()
+
+
+class SubmissionsDB(_SqliteDB):
+    """Stores resume+JD submissions per authenticated user session."""
+
+    def __init__(self, db_path: Path):
+        super().__init__(db_path)
+        self._init_db()
+
+    def _init_db(self):
+        with self._get_connection() as conn:
+            conn.execute('PRAGMA journal_mode=WAL')
+            conn.execute('PRAGMA foreign_keys = ON')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS submissions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    session_token TEXT NOT NULL,
+                    resume_raw_text TEXT,
+                    resume_fields_json TEXT,
+                    resume_photo_path TEXT,
+                    jd_raw_text TEXT,
+                    jd_fields_json TEXT,
+                    ats_score_json TEXT,
+                    status TEXT NOT NULL DEFAULT 'PENDING',
+                    revision_count INTEGER DEFAULT 0,
+                    error_message TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            ''')
+            # Migrations: add columns to existing DBs created before each phase
+            # Phase 3: ats_score_json | Phase 4: llm_output_json, output_pdf_path
+            existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(submissions)")}
+            if "ats_score_json" not in existing_cols:
+                conn.execute("ALTER TABLE submissions ADD COLUMN ats_score_json TEXT")
+            if "llm_output_json" not in existing_cols:
+                conn.execute("ALTER TABLE submissions ADD COLUMN llm_output_json TEXT")
+            if "output_pdf_path" not in existing_cols:
+                conn.execute("ALTER TABLE submissions ADD COLUMN output_pdf_path TEXT")
+            conn.commit()
+
+    def create_submission(self, user_id: int, session_token: str) -> int:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """INSERT INTO submissions (user_id, session_token, status)
+                   VALUES (?, ?, ?)""",
+                (user_id, session_token, SubmissionStatus.PENDING.value),
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    def get_submission(self, submission_id: int) -> Optional[SubmissionRecord]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM submissions WHERE id = ?", (submission_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return SubmissionRecord(**dict(row))
+
+    _SUBMISSION_UPDATE_COLUMNS = frozenset({
+        "resume_raw_text", "resume_fields_json", "resume_photo_path",
+        "jd_raw_text", "jd_fields_json", "ats_score_json",
+        "llm_output_json", "output_pdf_path",
+        "revision_count", "error_message",
+    })
+
+    def update_submission(self, submission_id: int, updates: Dict[str, Any]):
+        if not updates:
+            return
+        if "status" in updates:
+            raise ValueError("Status must be updated via set_status()")
+        invalid = set(updates.keys()) - self._SUBMISSION_UPDATE_COLUMNS
+        if invalid:
+            raise ValueError(f"update_submission: unknown columns: {invalid}")
+        set_clause = ", ".join([f"{k} = ?" for k in updates.keys()])
+        set_clause += ", updated_at = CURRENT_TIMESTAMP"
+        values = list(updates.values())
+        values.append(submission_id)
+        with self._get_connection() as conn:
+            conn.execute(
+                f"UPDATE submissions SET {set_clause} WHERE id = ?", values
+            )
+            conn.commit()
+
+    def set_status(self, submission_id: int, new_status: SubmissionStatus):
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE submissions SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (new_status.value, submission_id),
+            )
+            conn.commit()
+
+    def get_submissions_by_user(self, user_id: int) -> List[SubmissionRecord]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM submissions WHERE user_id = ? ORDER BY id DESC",
+                (user_id,),
+            )
+            return [SubmissionRecord(**dict(row)) for row in cursor.fetchall()]

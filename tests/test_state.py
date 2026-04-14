@@ -116,11 +116,186 @@ def test_config_crud(state_db):
 def test_checkpoint_save_and_read(cp_mgr):
     # empty
     assert cp_mgr.get_resume_point("/src") is None
-    
+
     cp_mgr.save_checkpoint(1, 5, "res1.pdf", 1, "/src")
     cp_mgr.save_checkpoint(1, 5, "res2.pdf", 2, "/src")
-    
+
     cp = cp_mgr.get_resume_point("/src")
     assert cp is not None
     assert cp.last_processed_filename == "res2.pdf"
     assert cp.total_processed == 2
+
+
+# ── Phase 2: SubmissionStatus + SubmissionRecord ──────────────────────────────
+
+from app.state.models import SubmissionStatus, SubmissionRecord
+from app.state.db import AuthDB, SubmissionsDB
+
+
+@pytest.fixture
+def submissions_db(tmp_path):
+    db_path = tmp_path / "test_subs.db"
+    AuthDB(db_path)  # users table must exist for FK
+    return SubmissionsDB(db_path)
+
+
+@pytest.fixture
+def user_and_submissions_db(tmp_path):
+    db_path = tmp_path / "test_subs.db"
+    auth_db = AuthDB(db_path)
+    subs_db = SubmissionsDB(db_path)
+    user_id = auth_db.create_user("test@example.com")
+    return user_id, subs_db
+
+
+def test_create_submission(user_and_submissions_db):
+    user_id, subs_db = user_and_submissions_db
+    sub_id = subs_db.create_submission(user_id=user_id, session_token="tok-abc")
+    assert isinstance(sub_id, int)
+    assert sub_id > 0
+
+
+def test_get_submission(user_and_submissions_db):
+    user_id, subs_db = user_and_submissions_db
+    sub_id = subs_db.create_submission(user_id=user_id, session_token="tok-abc")
+    rec = subs_db.get_submission(sub_id)
+    assert rec is not None
+    assert rec.user_id == user_id
+    assert rec.session_token == "tok-abc"
+    assert rec.status == SubmissionStatus.PENDING.value
+    assert rec.revision_count == 0
+
+
+def test_get_submission_not_found(user_and_submissions_db):
+    _, subs_db = user_and_submissions_db
+    assert subs_db.get_submission(9999) is None
+
+
+def test_update_submission(user_and_submissions_db):
+    user_id, subs_db = user_and_submissions_db
+    sub_id = subs_db.create_submission(user_id=user_id, session_token="tok-xyz")
+    subs_db.update_submission(sub_id, {
+        "resume_raw_text": "John Doe resume",
+        "resume_fields_json": '{"candidate_name": "John Doe"}',
+    })
+    rec = subs_db.get_submission(sub_id)
+    assert rec.resume_raw_text == "John Doe resume"
+    assert rec.resume_fields_json == '{"candidate_name": "John Doe"}'
+
+
+def test_update_submission_status_blocked(user_and_submissions_db):
+    user_id, subs_db = user_and_submissions_db
+    sub_id = subs_db.create_submission(user_id=user_id, session_token="tok-s")
+    with pytest.raises(ValueError, match="set_status"):
+        subs_db.update_submission(sub_id, {"status": "PROCESSING"})
+
+
+def test_set_status(user_and_submissions_db):
+    user_id, subs_db = user_and_submissions_db
+    sub_id = subs_db.create_submission(user_id=user_id, session_token="tok-st")
+    subs_db.set_status(sub_id, SubmissionStatus.PROCESSING)
+    rec = subs_db.get_submission(sub_id)
+    assert rec.status == SubmissionStatus.PROCESSING.value
+
+
+def test_set_status_to_error_from_any(user_and_submissions_db):
+    user_id, subs_db = user_and_submissions_db
+    sub_id = subs_db.create_submission(user_id=user_id, session_token="tok-err")
+    subs_db.set_status(sub_id, SubmissionStatus.ERROR)
+    rec = subs_db.get_submission(sub_id)
+    assert rec.status == SubmissionStatus.ERROR.value
+
+
+def test_get_submissions_by_user(user_and_submissions_db):
+    user_id, subs_db = user_and_submissions_db
+    subs_db.create_submission(user_id=user_id, session_token="tok-1")
+    subs_db.create_submission(user_id=user_id, session_token="tok-2")
+    results = subs_db.get_submissions_by_user(user_id)
+    assert len(results) == 2
+
+
+def test_submission_status_values():
+    assert SubmissionStatus.PENDING.value == "PENDING"
+    assert SubmissionStatus.PROCESSING.value == "PROCESSING"
+    assert SubmissionStatus.REVIEW_READY.value == "REVIEW_READY"
+    assert SubmissionStatus.REVISION_REQUESTED.value == "REVISION_REQUESTED"
+    assert SubmissionStatus.REVISION_EXHAUSTED.value == "REVISION_EXHAUSTED"
+    assert SubmissionStatus.ACCEPTED.value == "ACCEPTED"
+    assert SubmissionStatus.PAYMENT_PENDING.value == "PAYMENT_PENDING"
+    assert SubmissionStatus.PAYMENT_CONFIRMED.value == "PAYMENT_CONFIRMED"
+    assert SubmissionStatus.DOWNLOAD_READY.value == "DOWNLOAD_READY"
+    assert SubmissionStatus.DOWNLOADED.value == "DOWNLOADED"
+    assert SubmissionStatus.ERROR.value == "ERROR"
+
+
+def test_submission_record_fields():
+    rec = SubmissionRecord(
+        id=1,
+        user_id=2,
+        session_token="tok",
+        resume_raw_text="raw",
+        resume_fields_json='{"candidate_name": "Alice"}',
+        resume_photo_path=None,
+        jd_raw_text="jd text",
+        jd_fields_json='{"job_title": "Engineer"}',
+        ats_score_json=None,
+        status="PENDING",
+        revision_count=0,
+        error_message=None,
+        created_at="2026-01-01T00:00:00",
+        updated_at="2026-01-01T00:00:00",
+    )
+    assert rec.user_id == 2
+    assert rec.revision_count == 0
+    assert rec.resume_photo_path is None
+
+
+def test_submission_record_has_new_fields():
+    """SubmissionRecord must accept llm_output_json and output_pdf_path."""
+    rec = SubmissionRecord(
+        id=1, user_id=2, session_token="tok",
+        resume_raw_text=None, resume_fields_json=None, resume_photo_path=None,
+        jd_raw_text=None, jd_fields_json=None, ats_score_json=None,
+        llm_output_json='{"candidate_name":"Alice"}',
+        output_pdf_path="/data/output/1_resume.pdf",
+        status="PENDING", revision_count=0,
+        error_message=None, created_at=None, updated_at=None,
+    )
+    assert rec.llm_output_json == '{"candidate_name":"Alice"}'
+    assert rec.output_pdf_path == "/data/output/1_resume.pdf"
+
+
+def test_submission_record_new_fields_default_none():
+    """New fields must be Optional with None default so existing code still works."""
+    rec = SubmissionRecord(
+        id=1, user_id=2, session_token="tok",
+        resume_raw_text=None, resume_fields_json=None, resume_photo_path=None,
+        jd_raw_text=None, jd_fields_json=None, ats_score_json=None,
+        status="PENDING", revision_count=0,
+        error_message=None, created_at=None, updated_at=None,
+    )
+    assert rec.llm_output_json is None
+    assert rec.output_pdf_path is None
+
+
+def test_new_columns_round_trip(user_and_submissions_db):
+    """llm_output_json and output_pdf_path must persist through update + fetch."""
+    user_id, subs_db = user_and_submissions_db
+    sub_id = subs_db.create_submission(user_id=user_id, session_token="tok-newcols")
+    llm_json = '{"candidate_name":"Bob","summary":"Great."}'
+    pdf_path = "/data/output/42_resume.pdf"
+    subs_db.update_submission(sub_id, {
+        "llm_output_json": llm_json,
+        "output_pdf_path": pdf_path,
+    })
+    rec = subs_db.get_submission(sub_id)
+    assert rec.llm_output_json == llm_json
+    assert rec.output_pdf_path == pdf_path
+
+
+def test_update_submission_rejects_unknown_column(user_and_submissions_db):
+    """update_submission must raise on unknown column names."""
+    user_id, subs_db = user_and_submissions_db
+    sub_id = subs_db.create_submission(user_id=user_id, session_token="tok-bad")
+    with pytest.raises(ValueError, match="unknown columns"):
+        subs_db.update_submission(sub_id, {"nonexistent_col": "value"})

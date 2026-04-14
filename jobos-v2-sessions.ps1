@@ -139,53 +139,89 @@ New in v2:
   - Store parsed resume_fields + jd_fields in DB linked to user session
   - app/ingestor/jd_extractor.py - extract JD fields using EXTRACT provider
 
-Before writing any code:
-  1. Read app/ingestor/extractor.py fully (headshot heuristic is critical - do not break)
-  2. Read app/state/db.py (new users/sessions tables from Phase 1)
-  3. Present plan
-  4. Wait for approval
+Implementation plan already written - DO NOT re-plan.
+Plan file: docs/superpowers/plans/2026-04-12-phase-02-upload-parse.md
+Scope resolved: YES Phase 2 includes LLM extract_fields call.
+Branch from: feature/phase-01-auth
+
+Load the plan and execute it using superpowers:executing-plans.
 '@
     }
 
     "phase-3" = @{
         model = $SONNET
-        label = "Phase 3 - ATS Score Engine (batch, in-process)"
+        label = "Phase 3 - ATS Score Engine (batch, in-process) - RESUME from Task 3"
         task  = "PHASE-03"
         prompt = @'
 Stack: Python 3.13, no LLM - pure Python scoring
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
-Task file: tasks/PHASE-03-ats-score-engine-batch.md
+Branch: feature/phase-02-upload-parse (144 tests passing)
+Plan file: docs/superpowers/plans/2026-04-12-phase-03-ats-score-engine.md
 
-PHASE 3: ATS Score Engine - batch, in-process, no LLM
+PHASE 3 RESUME SESSION - Tasks 1 and 2 are COMPLETE. Do NOT redo them.
 
-Scope: app/scoring/ only (new module)
+════════════════════════════════════════════════
+ALREADY DONE (do not re-implement):
+════════════════════════════════════════════════
+Pre-fixes committed (9d67daa):
+  - app/ui/pages/1_Setup.py: anthropic_api_key renamed + GEMINI_API_KEY field added
+  - app/state/models.py: ats_score_json: Optional[str] added to SubmissionRecord
+  - app/state/db.py: ats_score_json TEXT column + ALTER TABLE migration + whitelist
+  - tests/test_state.py: ats_score_json=None added to fixture
 
-What to build:
-  app/scoring/__init__.py
-  app/scoring/ats_scorer.py   - compute_ats_score(resume_fields, jd_fields) -> ATSScore
-  app/scoring/missing_info.py - detect_missing(resume_fields) -> List[MissingItem]
-  app/scoring/models.py       - ATSScore, MissingItem dataclasses
+Task 1 committed (a30fd9f):
+  - app/scoring/models.py: ATSScore + MissingItem dataclasses
+  - app/scoring/__init__.py: stub
+  - tests/test_scoring_models.py: 6 tests
 
-ATS score components (0-100):
-  keyword_match        (30%) - resume keywords vs JD required keywords
-  skills_coverage      (30%) - resume skills vs JD required skills
-  experience_clarity   (20%) - presence of: dates, roles, company names, achievements
-  structure_completeness(20%) - presence of: summary, education, certifications
+Task 2 committed (e811327):
+  - app/scoring/ats_scorer.py: _tokenize, _score_keyword_match, _normalize_skill (REAL)
+    _score_skills_coverage, _score_experience_clarity, _score_structure_completeness,
+    compute_ats_score are STUBS (return 15/0 - to be replaced in Tasks 3-4)
+  - tests/test_ats_scorer.py: _make_jd + _make_resume_fields helpers + 7 keyword_match tests
 
-Missing info severity:
-  HIGH   - missing dates, missing current role designation
-  MEDIUM - no measurable achievements, no company description
-  LOW    - no certifications, no LinkedIn/GitHub
+════════════════════════════════════════════════
+STEP 1 - APPLY THESE 4 FIXES FIRST (from code review of Task 2):
+════════════════════════════════════════════════
+In app/scoring/ats_scorer.py:
 
-Rules:
-  - NO LLM calls in this module - pure Python string matching + heuristics
-  - Score must complete in <1s
-  - Use skill: ats-scorer for each component
+Fix 1 - non-string guard at top of _tokenize:
+  if not isinstance(text, str):
+      return set()
 
-Before writing any code:
-  1. Read app/ingestor/extractor.py (understand the field structure from v1)
-  2. Present scoring algorithm design
-  3. Wait for approval
+Fix 2 - non-string guard in _score_keyword_match responsibilities loop:
+  for resp in responsibilities:
+      if isinstance(resp, str):
+          jd_tokens.update(_tokenize(resp))
+
+Fix 3 - replace _normalize_skill with alias-aware version (C++ -> cplusplus, split on /,  NOT +):
+  _SKILL_ALIASES = {
+      "c++": "cplusplus", "c#": "csharp", "f#": "fsharp",
+      ".net": "dotnet", "node.js": "nodejs", "vue.js": "vuejs",
+      "react.js": "reactjs", "next.js": "nextjs",
+  }
+  def _normalize_skill(skill: str) -> List[str]:
+      lowered = skill.lower().strip()
+      for src, dst in _SKILL_ALIASES.items():
+          lowered = lowered.replace(src, dst)
+      parts = re.split(r"[/,]", lowered)
+      return [re.sub(r"[^a-z0-9\s]", "", p).strip() for p in parts if p.strip()]
+
+Fix 4 - tighten fallback test in tests/test_ats_scorer.py:
+  test_keyword_match_fallback_empty_responsibilities:
+    assert 0 < score <= 15  (was: assert score <= 15)
+
+Run: python -m pytest tests/ -q   -> must still show 144 passed
+Commit: [PHASE-03] fix: non-string guard in tokenize; C++ alias in normalize_skill; tighten fallback test
+
+════════════════════════════════════════════════
+STEP 2 - CONTINUE with Tasks 3-7 from the plan:
+════════════════════════════════════════════════
+Load plan: docs/superpowers/plans/2026-04-12-phase-03-ats-score-engine.md
+Execute Tasks 3, 4, 5, 6, 7 using superpowers:subagent-driven-development.
+Start at Task 3 (skills_coverage). Do NOT re-run Tasks 1 or 2.
+
+Use python -m pytest (not bare pytest) for all test runs.
 '@
     }
 
@@ -196,7 +232,11 @@ Before writing any code:
         prompt = @'
 Stack: Python 3.13, Streamlit, SQLite, reportlab
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
-Task file: tasks/PHASE-04-resume-review-page.md
+Branch: feature/phase-02-upload-parse (183 tests passing)
+
+PHASE 3 IS COMPLETE. Do NOT redo it.
+  app/scoring/ is fully built: ats_scorer, missing_info, models, _patterns, __init__
+  compute_ats_score() and detect_missing() are live and tested.
 
 PHASE 4: Resume review page - read-only output + accept/reject controls
 
@@ -204,8 +244,8 @@ Scope: app/ui/pages/3_Review.py + app/llm/ (trigger rewrite for first generation
 
 What to build:
   app/ui/pages/3_Review.py - candidate review page:
-    - Show ATS score breakdown (from Phase 3)
-    - Show missing info panel (severity ranked)
+    - Show ATS score breakdown (from Phase 3 compute_ats_score)
+    - Show missing info panel (from Phase 3 detect_missing, severity ranked)
     - Show AI-generated resume (PDF preview or structured text)
     - Show JD alignment highlights
     - Controls: [Accept Draft] [Request Revision] [Back]
@@ -222,11 +262,13 @@ Rules:
   - No editing on this page - read-only
   - Revision button only shows if revisions_remaining > 0 (max 3)
   - Status machine: PROCESSING -> REVIEW_READY
+  - Use python -m pytest (not bare pytest) for all test runs
 
 Before writing any code:
-  1. Read app/composer/pdf_writer.py + app/llm/finetuner.py fully
-  2. Present provider.py design (Gemini Flash + DeepSeek V3 adapters)
-  3. Wait for approval
+  1. Read /memory to load Phase 3 context
+  2. Read app/composer/pdf_writer.py + app/llm/finetuner.py fully
+  3. Present provider.py design (Gemini Flash + DeepSeek V3 adapters)
+  4. Wait for approval
 '@
     }
 
@@ -237,35 +279,62 @@ Before writing any code:
         prompt = @'
 Stack: Python 3.13, Streamlit, SQLite, app/llm/
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
-Task file: tasks/PHASE-05-revision-request-up-to-3x.md
+Branch: feature/phase-02-upload-parse (204 tests passing)
+
+PHASE 4 IS COMPLETE. Do NOT redo it.
+  app/ui/pages/3_Review.py is fully built: auth guard, pipeline trigger,
+    two-column layout (ATS score + missing info left, resume text + JD alignment right),
+    action bar (Back / Request Revision / Accept Draft).
+  _run_rewrite_pipeline() is live and tested (tests/test_review_pipeline.py, 5 tests).
+  Provider routing is live: LLM_EXTRACT_PROVIDER (claude|gemini), LLM_REWRITE_PROVIDER (claude|deepseek).
+  MAX_REVISIONS = 3 constant defined in 3_Review.py.
+  Status machine in place: PROCESSING -> REVIEW_READY -> REVISION_REQUESTED / ACCEPTED.
 
 PHASE 5: Revision request - re-run LLM pipeline, max 3 revisions per session
 
-Scope: app/ui/pages/4_Revise.py + app/state/ (revision counter)
+Scope: app/ui/pages/4_Revise.py + app/llm/ (revision_hint support)
 
 What to build:
   app/ui/pages/4_Revise.py  - revision request page:
-    - Show current draft
-    - Text input: "What to improve?" (optional hint to LLM)
-    - Show revisions_remaining count (e.g. "2 revisions left")
-    - [Submit Revision Request] button
-    - Status: REVISION_REQUESTED -> PROCESSING -> REVIEW_READY
+    - Auth guard (same pattern as 3_Review.py _require_auth)
+    - Load submission (current_submission_id from session_state)
+    - Guard: only show if status == REVISION_REQUESTED
+    - Show current AI draft (read from llm_output_json)
+    - Text area: "What would you like to improve?" (optional hint to LLM)
+    - Show revisions_remaining = MAX_REVISIONS - revision_count
+    - [Submit Revision] button:
+        set status PROCESSING, re-run _run_rewrite_pipeline (with hint), st.rerun()
+    - After re-run: redirect to 3_Review.py
 
-  app/state/db.py  - add: revisions_used column, revisions_remaining computed
-  app/state/models.py - add REVISION_REQUESTED, REVISION_EXHAUSTED to status enum
-  app/llm/finetuner.py - accept optional revision_hint parameter
+  app/llm/provider.py + finetuner.py:
+    - rewrite_resume() and adapters accept optional revision_hint: str = ""
+    - If hint provided: append to prompt ("Candidate feedback: {hint}")
+    - Claude and DeepSeek adapters both updated
+
+  REVISION_EXHAUSTED status:
+    - If revision_count >= MAX_REVISIONS after re-run: set REVISION_EXHAUSTED
+    - 4_Revise.py shows [Accept Anyway] only when REVISION_EXHAUSTED
+
+  MAX_REVISIONS = 3 is already defined in app/ui/pages/3_Review.py.
+  Import or redefine it in 4_Revise.py (do NOT create a shared constants file
+  unless the plan calls for it).
 
 Rules:
-  - Hard cap at 3 revisions (enforced DB-side, not just UI-side)
-  - Revision hint is optional - LLM uses it only if provided
-  - After 3rd revision: show [Accept Anyway] only, no more revision button
-  - Status machine: REVIEW_READY -> REVISION_REQUESTED -> REVIEW_READY (up to 3x)
-  -                 REVIEW_READY -> REVISION_EXHAUSTED (after 3rd)
+  - revision_count is already in SubmissionRecord and DB (from Phase 2/4)
+  - Do NOT add a revisions_used column - revision_count is already tracking this
+  - REVISION_REQUESTED and REVISION_EXHAUSTED are already in SubmissionStatus enum
+    (verify before adding - check app/state/models.py)
+  - Hard cap enforced: button hidden + status set to REVISION_EXHAUSTED at limit
+  - Revision hint is optional - LLM uses it only if non-empty
+  - Use python -m pytest (not bare pytest) for all test runs
 
 Before writing any code:
-  1. Read app/state/models.py + app/state/db.py
-  2. Present revision counter schema + status transitions
-  3. Wait for approval
+  1. Read /memory to load Phase 4 context
+  2. Read app/state/models.py (check SubmissionStatus enum values)
+  3. Read app/ui/pages/3_Review.py (understand _require_auth, _run_rewrite_pipeline patterns to reuse)
+  4. Read app/llm/finetuner.py + provider.py (understand current rewrite_resume signature)
+  5. Present plan for revision_hint threading + 4_Revise.py page structure
+  6. Wait for approval
 '@
     }
 
@@ -285,7 +354,7 @@ Scope: app/scoring/missing_info.py (extend) + UI panel component
 What to build/extend:
   app/scoring/missing_info.py - extend with:
     - importance_level: HIGH | MEDIUM | LOW
-    - actionable message per missing item (e.g. "Add exact dates for each role")
+    - actionable message per missing item (e.g. 'Add exact dates for each role')
     - group by section (Experience / Education / Skills / Summary)
 
   app/ui/components/missing_panel.py - Streamlit component:
@@ -641,4 +710,5 @@ if ($Session -ne "debug") {
     $s.prompt | Set-Content $tmpPrompt -Encoding UTF8
 }
 
-claude --model $s.model --print (Get-Content $tmpPrompt -Raw)
+$promptContent = Get-Content $tmpPrompt -Raw
+claude --model $s.model $promptContent

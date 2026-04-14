@@ -13,7 +13,61 @@ Use empty string "" for any field not found in the resume.
 {resume_text}""".strip()
 
 
-def build_finetuning_prompt(resume_text: str, jd_text: str, best_practice_text: str, candidate_name: str) -> str:
+def build_jd_extraction_prompt(jd_text: str) -> str:
+    """
+    Prompt for the EXTRACT provider to pull structured fields from a Job Description.
+    Used by jd_extractor.py for Phase 2 upload and Phase 3 ATS scoring.
+    """
+    return f"""Extract structured fields from the Job Description below.
+
+Respond ONLY with valid JSON matching this schema exactly - no markdown, no explanation:
+{{
+  "job_title": "string",
+  "company": "string",
+  "required_skills": ["string"],
+  "preferred_skills": ["string"],
+  "experience_required": "string",
+  "education_required": "string",
+  "key_responsibilities": ["string"]
+}}
+
+Use empty string "" for scalar fields not found. Use [] for list fields not found.
+
+=== JOB DESCRIPTION ===
+{jd_text}""".strip()
+
+
+def build_resume_fields_prompt(resume_text: str) -> str:
+    """
+    Prompt for the EXTRACT provider to pull structured fields from a resume.
+    Returns richer schema than v1 extract_fields() - used for ATS scoring (Phase 3).
+    The v1 extract_fields() (name/email/phone only) is preserved separately for backward compat.
+    """
+    return f"""Extract structured fields from the resume below.
+
+Respond ONLY with valid JSON matching this schema exactly - no markdown, no explanation:
+{{
+  "candidate_name": "string",
+  "email": "string",
+  "phone": "string",
+  "current_title": "string",
+  "skills": ["string"],
+  "experience_summary": "string"
+}}
+
+Use empty string "" for scalar fields not found. Use [] for skills if none found.
+
+=== RESUME ===
+{resume_text}""".strip()
+
+
+def build_finetuning_prompt(
+    resume_text: str,
+    jd_text: str,
+    best_practice_text: str,
+    candidate_name: str,
+    revision_hint: str = "",
+) -> str:
     """
     Builds the structured prompt for Claude Sonnet to fine-tune a candidate's resume against a JD.
     """
@@ -60,4 +114,7 @@ You must respond with ONLY valid JSON matching this schema exactly. No markdown 
   "missing_fields": ["string - any field that was blank or unclear in source resume"]
 }}
 """
+    if revision_hint.strip():
+        prompt += f"\n\n=== REVISION REQUEST ===\n{revision_hint.strip()}\nApply this specific feedback when rewriting the resume."
+
     return prompt.strip()
