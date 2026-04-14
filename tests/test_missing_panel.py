@@ -83,6 +83,8 @@ def test_render_missing_panel_calls_expander_for_high(monkeypatch):
 
     monkeypatch.setattr(st, "expander", fake_expander)
     monkeypatch.setattr(st, "columns", lambda spec: [MagicMock(), MagicMock()])
+    monkeypatch.setattr(st, "button", lambda *a, **kw: False)
+    monkeypatch.setattr(st, "markdown", lambda *a, **kw: None)
 
     mod.render_missing_panel({}, "text")
     assert any("High Priority" in t for t in expander_titles)
