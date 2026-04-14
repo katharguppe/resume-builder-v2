@@ -107,3 +107,52 @@ def test_save_skills_empty_list(db_and_submission):
     updated = subs_db.get_submission(sub_id)
     saved = json.loads(updated.llm_output_json)
     assert saved["skills"] == []
+
+
+# ── Re-import new helpers added in fix ────────────────────────────────────
+_add_skill = _skills_mod._add_skill
+_remove_skill = _skills_mod._remove_skill
+_filter_suggestions = _skills_mod._filter_suggestions
+
+
+# ── _add_skill ─────────────────────────────────────────────────────────────
+
+def test_add_skill_appends_to_list():
+    result = _add_skill(["Python"], "SQL")
+    assert result == ["Python", "SQL"]
+
+
+def test_add_skill_no_duplicate():
+    result = _add_skill(["Python"], "Python")
+    assert result == ["Python"]
+
+
+def test_add_skill_empty_string_ignored():
+    result = _add_skill(["Python"], "   ")
+    assert result == ["Python"]
+
+
+# ── _remove_skill ───────────────────────────────────────────────────────────
+
+def test_remove_skill_removes_from_list():
+    result = _remove_skill(["Python", "SQL"], "Python")
+    assert result == ["SQL"]
+
+
+def test_remove_skill_not_present_is_noop():
+    result = _remove_skill(["Python"], "SQL")
+    assert result == ["Python"]
+
+
+# ── _filter_suggestions ─────────────────────────────────────────────────────
+
+def test_filter_suggestions_excludes_working_skills():
+    result = _filter_suggestions(["Python"], ["Python", "SQL"])
+    assert "Python" not in result
+    assert "SQL" in result
+
+
+def test_filter_suggestions_case_insensitive():
+    result = _filter_suggestions(["python"], ["Python", "SQL"])
+    assert "Python" not in result
+    assert "SQL" in result

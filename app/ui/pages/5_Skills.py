@@ -55,35 +55,72 @@ def _save_skills(
     subs_db.update_submission(submission_id, {"llm_output_json": json.dumps(data)})
 
 
+def _add_skill(working: List[str], skill: str) -> List[str]:
+    """Return new list with skill appended if not already present (case-sensitive check)."""
+    stripped = skill.strip()
+    if stripped and stripped not in working:
+        return working + [stripped]
+    return working
+
+
+def _remove_skill(working: List[str], skill: str) -> List[str]:
+    """Return new list with first occurrence of skill removed."""
+    result = list(working)
+    if skill in result:
+        result.remove(skill)
+    return result
+
+
+def _filter_suggestions(working: List[str], suggestions: List[str]) -> List[str]:
+    """Return suggestions not already in working list (case-insensitive)."""
+    working_lower = {s.lower() for s in working}
+    return [s for s in suggestions if s.lower() not in working_lower]
+
+
 # ── Page entry point ───────────────────────────────────────────────────────
 
 def main():
     st.title("Skills Builder")
     st.caption("Review and refine the skills on your resume.")
 
-    session_token = st.session_state.get("session_token")
-    if not session_token:
-        st.warning("Please log in first.")
+    # ── Auth guard ─────────────────────────────────────────────────────────
+    token = st.session_state.get("auth_token")
+    if not token:
+        st.warning("Please sign in first.")
         st.stop()
+        return
 
     auth_db = AuthDB(DB_PATH)
     subs_db = SubmissionsDB(DB_PATH)
 
-    user = auth_db.get_user_by_token(session_token)
-    if not user:
-        st.warning("Session expired. Please log in again.")
+    session = auth_db.get_session(token)
+    if session is None:
+        st.warning("Session expired. Please sign in again.")
+        for key in ("auth_token", "auth_email"):
+            st.session_state.pop(key, None)
         st.stop()
+        return
 
-    submission = subs_db.get_latest_submission(user.id)
+    # ── Submission guard ───────────────────────────────────────────────────
+    sub_id = st.session_state.get("current_submission_id")
+    if not sub_id:
+        st.info("No active submission found. Please upload your resume first.")
+        st.stop()
+        return
+
+    submission = subs_db.get_submission(int(sub_id))
     accessible_statuses = {
         SubmissionStatus.REVIEW_READY,
         SubmissionStatus.REVISION_REQUESTED,
         SubmissionStatus.REVISION_EXHAUSTED,
         SubmissionStatus.ACCEPTED,
+        SubmissionStatus.PAYMENT_PENDING,
+        SubmissionStatus.PAYMENT_CONFIRMED,
     }
     if not submission or submission.status not in accessible_statuses:
         st.info("No resume ready yet. Please upload and process your resume first.")
         st.stop()
+        return
 
     # ── Initialise session state (once per page load) ──────────────────────
     if "skills_working" not in st.session_state:
@@ -129,23 +166,20 @@ def _render_current_skills(working: List[str]) -> None:
                 c1, c2 = st.columns([5, 1])
                 c1.write(skill)
                 if c2.button("x", key=f"remove_{skill}", help=f"Remove {skill}"):
-                    if skill in st.session_state["skills_working"]:
-                        st.session_state["skills_working"].remove(skill)
+                    st.session_state["skills_working"] = _remove_skill(st.session_state["skills_working"], skill)
                     st.rerun()
 
     st.divider()
     with st.form("add_skill_form", clear_on_submit=True):
         new_skill = st.text_input("Add a skill", placeholder="e.g. Budget Management")
         if st.form_submit_button("Add") and new_skill.strip():
-            if new_skill.strip() not in st.session_state["skills_working"]:
-                st.session_state["skills_working"].append(new_skill.strip())
+            st.session_state["skills_working"] = _add_skill(st.session_state["skills_working"], new_skill)
             st.rerun()
 
 
 def _render_suggestions(working: List[str], suggestions: List[str]) -> None:
     st.subheader("Suggested from JD")
-    working_lower = {s.lower() for s in working}
-    pending = [s for s in suggestions if s.lower() not in working_lower]
+    pending = _filter_suggestions(working, suggestions)
 
     if not pending:
         st.caption("No additional suggestions — your skills look well-matched to the JD.")
@@ -155,8 +189,7 @@ def _render_suggestions(working: List[str], suggestions: List[str]) -> None:
         c1, c2 = st.columns([5, 1])
         c1.write(suggestion)
         if c2.button("+", key=f"add_sug_{suggestion}", help=f"Add {suggestion}"):
-            if suggestion not in st.session_state["skills_working"]:
-                st.session_state["skills_working"].append(suggestion)
+            st.session_state["skills_working"] = _add_skill(st.session_state["skills_working"], suggestion)
             st.rerun()
 
 
