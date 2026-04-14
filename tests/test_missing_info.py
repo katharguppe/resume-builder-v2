@@ -176,3 +176,53 @@ def test_missing_item_section_defaults_to_empty_string():
     from app.scoring.models import MissingItem
     item = MissingItem(field="x", label="x", severity="HIGH", hint="x")
     assert item.section == ""
+
+
+def test_detect_missing_sections_are_non_empty():
+    """Every returned MissingItem must have a non-empty section."""
+    from app.scoring.missing_info import detect_missing
+    items = detect_missing(_make_fields(current_title=""), "")
+    for item in items:
+        assert item.section != "", f"field={item.field!r} has empty section"
+
+
+def test_detect_missing_work_dates_section():
+    from app.scoring.missing_info import detect_missing
+    items = detect_missing(_make_fields(), "no dates here")
+    match = next(i for i in items if i.field == "work_dates")
+    assert match.section == "Experience"
+
+
+def test_detect_missing_current_title_section():
+    from app.scoring.missing_info import detect_missing
+    items = detect_missing(_make_fields(current_title=""), "Senior Engineer at Acme 2019-2022")
+    match = next(i for i in items if i.field == "current_title")
+    assert match.section == "Contact"
+
+
+def test_detect_missing_achievements_section():
+    from app.scoring.missing_info import detect_missing
+    items = detect_missing(_make_fields(), "Engineer at Acme Ltd 2019-2022")
+    match = next(i for i in items if i.field == "achievements")
+    assert match.section == "Experience"
+
+
+def test_detect_missing_company_names_section():
+    from app.scoring.missing_info import detect_missing
+    items = detect_missing(_make_fields(), "Engineer 2019-2022")
+    match = next(i for i in items if i.field == "company_names")
+    assert match.section == "Experience"
+
+
+def test_detect_missing_certifications_section():
+    from app.scoring.missing_info import detect_missing
+    items = detect_missing(_make_fields(), "Engineer at Acme 2019-2022 reduced latency by 30%")
+    match = next(i for i in items if i.field == "certifications")
+    assert match.section == "Education"
+
+
+def test_detect_missing_social_links_section():
+    from app.scoring.missing_info import detect_missing
+    items = detect_missing(_make_fields(), "Engineer at Acme 2019-2022 reduced latency by 30%")
+    match = next(i for i in items if i.field == "social_links")
+    assert match.section == "Contact"

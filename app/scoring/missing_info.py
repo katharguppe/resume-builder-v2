@@ -28,6 +28,7 @@ def detect_missing(resume_fields: dict, resume_raw_text: str) -> List[MissingIte
             field="work_dates",
             label="Work experience dates",
             severity="HIGH",
+            section="Experience",
             hint="Add start and end year (e.g. 2020-2023) to each role.",
         ))
     if not resume_fields.get("current_title", "").strip():
@@ -35,6 +36,7 @@ def detect_missing(resume_fields: dict, resume_raw_text: str) -> List[MissingIte
             field="current_title",
             label="Current job title",
             severity="HIGH",
+            section="Contact",
             hint="Add your most recent job title below your name.",
         ))
 
@@ -44,6 +46,7 @@ def detect_missing(resume_fields: dict, resume_raw_text: str) -> List[MissingIte
             field="achievements",
             label="Measurable achievements",
             severity="MEDIUM",
+            section="Experience",
             hint="Quantify your impact with numbers (e.g. 'Reduced costs by 30%').",
         ))
     if not _COMPANY_RE.search(resume_raw_text):
@@ -51,6 +54,7 @@ def detect_missing(resume_fields: dict, resume_raw_text: str) -> List[MissingIte
             field="company_names",
             label="Employer names",
             severity="MEDIUM",
+            section="Experience",
             hint="Add the company name next to each role you have held.",
         ))
 
@@ -60,6 +64,7 @@ def detect_missing(resume_fields: dict, resume_raw_text: str) -> List[MissingIte
             field="certifications",
             label="Certifications",
             severity="LOW",
+            section="Education",
             hint="Add any certifications, online courses, or training.",
         ))
     if not _SOCIAL_RE.search(resume_raw_text):
@@ -67,6 +72,7 @@ def detect_missing(resume_fields: dict, resume_raw_text: str) -> List[MissingIte
             field="social_links",
             label="LinkedIn / GitHub",
             severity="LOW",
+            section="Contact",
             hint="Add your LinkedIn profile URL or GitHub handle.",
         ))
 
