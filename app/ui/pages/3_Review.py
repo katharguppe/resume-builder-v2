@@ -13,7 +13,8 @@ import streamlit as st
 from app.best_practice.searcher import search_best_practice
 from app.composer.pdf_writer import generate_resume_pdf
 from app.llm.provider import rewrite_resume
-from app.scoring import compute_ats_score, detect_missing
+from app.scoring import compute_ats_score
+from app.ui.components.missing_panel import render_missing_panel
 from app.state.db import AuthDB, SubmissionsDB
 from app.state.models import SubmissionRecord, SubmissionStatus
 
@@ -120,17 +121,6 @@ def _render_ats_panel(ats_dict: dict) -> None:
     )
 
 
-def _render_missing_panel(resume_fields: dict, resume_raw_text: str) -> None:
-    """Render missing info panel (severity ranked) below ATS score."""
-    missing_items = detect_missing(resume_fields, resume_raw_text)
-    if not missing_items:
-        st.success("No critical missing information detected.")
-        return
-    st.subheader("Missing Info")
-    for item in missing_items:
-        badge = "🔴" if item.severity == "HIGH" else ("🟡" if item.severity == "MEDIUM" else "⚪")
-        st.markdown(f"{badge} **{item.label}** — {item.hint}")
-
 
 def _render_jd_alignment(llm_output: dict, jd_fields: dict) -> None:
     """Show which required JD skills appear in the AI resume."""
@@ -152,6 +142,12 @@ def _render_jd_alignment(llm_output: dict, jd_fields: dict) -> None:
         st.markdown("**Missing from resume:** " + " ".join(f"`{s}`" for s in unmatched))
 
 
+def _render_section_highlight(section: str) -> None:
+    """Show a callout if this section is focused via missing panel."""
+    if st.session_state.get("highlight_section") == section:
+        st.warning(f"⚠ Fix needed here: {section}")
+
+
 def _render_resume_text(llm_output: dict) -> None:
     """Render AI-generated resume as structured read-only text."""
     st.subheader("AI-Generated Resume")
@@ -160,6 +156,7 @@ def _render_resume_text(llm_output: dict) -> None:
     contact = llm_output.get("contact", {})
     if name:
         st.markdown(f"### {name}")
+    _render_section_highlight("Contact")
     contact_parts = [
         v for v in [contact.get("email"), contact.get("phone"), contact.get("linkedin")]
         if v
@@ -168,11 +165,13 @@ def _render_resume_text(llm_output: dict) -> None:
         st.caption(" | ".join(contact_parts))
 
     summary = llm_output.get("summary", "")
+    _render_section_highlight("Summary")
     if summary:
         st.markdown("**Summary**")
         st.write(summary)
 
     experience = llm_output.get("experience", [])
+    _render_section_highlight("Experience")
     if experience:
         st.markdown("**Experience**")
         for exp in experience:
@@ -183,6 +182,7 @@ def _render_resume_text(llm_output: dict) -> None:
                 st.markdown(f"- {bullet}")
 
     education = llm_output.get("education", [])
+    _render_section_highlight("Education")
     if education:
         st.markdown("**Education**")
         for edu in education:
@@ -191,6 +191,7 @@ def _render_resume_text(llm_output: dict) -> None:
             )
 
     skills = llm_output.get("skills", [])
+    _render_section_highlight("Skills")
     if skills:
         st.markdown("**Skills**")
         st.write(", ".join(skills))
@@ -256,7 +257,8 @@ def main() -> None:
     with col_left:
         _render_ats_panel(ats_dict)
         st.divider()
-        _render_missing_panel(resume_fields, submission.resume_raw_text or "")
+        st.subheader("Missing Info")
+        render_missing_panel(resume_fields, submission.resume_raw_text or "", key_prefix="review_")
 
     with col_right:
         _render_jd_alignment(llm_output, jd_fields)
