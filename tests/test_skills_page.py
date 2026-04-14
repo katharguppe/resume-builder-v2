@@ -156,3 +156,34 @@ def test_filter_suggestions_case_insensitive():
     result = _filter_suggestions(["python"], ["Python", "SQL"])
     assert "Python" not in result
     assert "SQL" in result
+
+
+# ── _init_skills_state edge cases ──────────────────────────────────────────
+
+def test_init_skills_state_invalid_json():
+    result = _init_skills_state("not-json")
+    assert result == []
+
+
+def test_init_skills_state_null_input():
+    result = _init_skills_state(None)
+    assert result == []
+
+
+# ── _save_skills edge cases ────────────────────────────────────────────────
+
+def test_save_skills_with_invalid_existing_json(db_and_submission):
+    subs_db, sub_id, _ = db_and_submission
+    _save_skills(subs_db, sub_id, "INVALID_JSON", ["Python"])
+    updated = subs_db.get_submission(sub_id)
+    saved = json.loads(updated.llm_output_json)
+    assert saved["skills"] == ["Python"]
+
+
+def test_save_skills_preserves_skills_order(db_and_submission):
+    subs_db, sub_id, llm_output = db_and_submission
+    ordered = ["Zulu", "Alpha", "Mango"]
+    _save_skills(subs_db, sub_id, json.dumps(llm_output), ordered)
+    updated = subs_db.get_submission(sub_id)
+    saved = json.loads(updated.llm_output_json)
+    assert saved["skills"] == ["Zulu", "Alpha", "Mango"]
