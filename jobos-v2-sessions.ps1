@@ -279,35 +279,62 @@ Before writing any code:
         prompt = @'
 Stack: Python 3.13, Streamlit, SQLite, app/llm/
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
-Task file: tasks/PHASE-05-revision-request-up-to-3x.md
+Branch: feature/phase-02-upload-parse (204 tests passing)
+
+PHASE 4 IS COMPLETE. Do NOT redo it.
+  app/ui/pages/3_Review.py is fully built: auth guard, pipeline trigger,
+    two-column layout (ATS score + missing info left, resume text + JD alignment right),
+    action bar (Back / Request Revision / Accept Draft).
+  _run_rewrite_pipeline() is live and tested (tests/test_review_pipeline.py, 5 tests).
+  Provider routing is live: LLM_EXTRACT_PROVIDER (claude|gemini), LLM_REWRITE_PROVIDER (claude|deepseek).
+  MAX_REVISIONS = 3 constant defined in 3_Review.py.
+  Status machine in place: PROCESSING -> REVIEW_READY -> REVISION_REQUESTED / ACCEPTED.
 
 PHASE 5: Revision request - re-run LLM pipeline, max 3 revisions per session
 
-Scope: app/ui/pages/4_Revise.py + app/state/ (revision counter)
+Scope: app/ui/pages/4_Revise.py + app/llm/ (revision_hint support)
 
 What to build:
   app/ui/pages/4_Revise.py  - revision request page:
-    - Show current draft
-    - Text input: "What to improve?" (optional hint to LLM)
-    - Show revisions_remaining count (e.g. "2 revisions left")
-    - [Submit Revision Request] button
-    - Status: REVISION_REQUESTED -> PROCESSING -> REVIEW_READY
+    - Auth guard (same pattern as 3_Review.py _require_auth)
+    - Load submission (current_submission_id from session_state)
+    - Guard: only show if status == REVISION_REQUESTED
+    - Show current AI draft (read from llm_output_json)
+    - Text area: "What would you like to improve?" (optional hint to LLM)
+    - Show revisions_remaining = MAX_REVISIONS - revision_count
+    - [Submit Revision] button:
+        set status PROCESSING, re-run _run_rewrite_pipeline (with hint), st.rerun()
+    - After re-run: redirect to 3_Review.py
 
-  app/state/db.py  - add: revisions_used column, revisions_remaining computed
-  app/state/models.py - add REVISION_REQUESTED, REVISION_EXHAUSTED to status enum
-  app/llm/finetuner.py - accept optional revision_hint parameter
+  app/llm/provider.py + finetuner.py:
+    - rewrite_resume() and adapters accept optional revision_hint: str = ""
+    - If hint provided: append to prompt ("Candidate feedback: {hint}")
+    - Claude and DeepSeek adapters both updated
+
+  REVISION_EXHAUSTED status:
+    - If revision_count >= MAX_REVISIONS after re-run: set REVISION_EXHAUSTED
+    - 4_Revise.py shows [Accept Anyway] only when REVISION_EXHAUSTED
+
+  MAX_REVISIONS = 3 is already defined in app/ui/pages/3_Review.py.
+  Import or redefine it in 4_Revise.py (do NOT create a shared constants file
+  unless the plan calls for it).
 
 Rules:
-  - Hard cap at 3 revisions (enforced DB-side, not just UI-side)
-  - Revision hint is optional - LLM uses it only if provided
-  - After 3rd revision: show [Accept Anyway] only, no more revision button
-  - Status machine: REVIEW_READY -> REVISION_REQUESTED -> REVIEW_READY (up to 3x)
-  -                 REVIEW_READY -> REVISION_EXHAUSTED (after 3rd)
+  - revision_count is already in SubmissionRecord and DB (from Phase 2/4)
+  - Do NOT add a revisions_used column - revision_count is already tracking this
+  - REVISION_REQUESTED and REVISION_EXHAUSTED are already in SubmissionStatus enum
+    (verify before adding - check app/state/models.py)
+  - Hard cap enforced: button hidden + status set to REVISION_EXHAUSTED at limit
+  - Revision hint is optional - LLM uses it only if non-empty
+  - Use python -m pytest (not bare pytest) for all test runs
 
 Before writing any code:
-  1. Read app/state/models.py + app/state/db.py
-  2. Present revision counter schema + status transitions
-  3. Wait for approval
+  1. Read /memory to load Phase 4 context
+  2. Read app/state/models.py (check SubmissionStatus enum values)
+  3. Read app/ui/pages/3_Review.py (understand _require_auth, _run_rewrite_pipeline patterns to reuse)
+  4. Read app/llm/finetuner.py + provider.py (understand current rewrite_resume signature)
+  5. Present plan for revision_hint threading + 4_Revise.py page structure
+  6. Wait for approval
 '@
     }
 
@@ -327,7 +354,7 @@ Scope: app/scoring/missing_info.py (extend) + UI panel component
 What to build/extend:
   app/scoring/missing_info.py - extend with:
     - importance_level: HIGH | MEDIUM | LOW
-    - actionable message per missing item (e.g. "Add exact dates for each role")
+    - actionable message per missing item (e.g. 'Add exact dates for each role')
     - group by section (Experience / Education / Skills / Summary)
 
   app/ui/components/missing_panel.py - Streamlit component:
@@ -683,4 +710,5 @@ if ($Session -ne "debug") {
     $s.prompt | Set-Content $tmpPrompt -Encoding UTF8
 }
 
-claude --model $s.model "$(Get-Content $tmpPrompt -Raw)"
+$promptContent = Get-Content $tmpPrompt -Raw
+claude --model $s.model $promptContent
