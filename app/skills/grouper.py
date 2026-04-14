@@ -50,3 +50,36 @@ def _load_keyword_sets() -> Dict[str, Set[str]]:
 
 # Loaded once at module import — cheap in-process, no I/O on page reruns.
 _KEYWORD_SETS: Dict[str, Set[str]] = _load_keyword_sets()
+
+
+def _matches(skill_lower: str, keyword_set: Set[str]) -> bool:
+    """Return True if skill_lower contains any keyword as a whole word."""
+    for kw in keyword_set:
+        pattern = r"\b" + re.escape(kw) + r"\b"
+        if re.search(pattern, skill_lower):
+            return True
+    return False
+
+
+def group_skills(raw_skills: List[str]) -> SkillGroups:
+    """
+    Classify a flat list of skills into Core / Tools / Functional / Domain.
+
+    Matching order: Core → Tools → Functional → Domain → Core (default).
+    Original casing is preserved in output.
+    Unknown skills fall to Core.
+    """
+    result = SkillGroups()
+    for skill in raw_skills:
+        skill_lower = skill.lower()
+        if _matches(skill_lower, _KEYWORD_SETS["core"]):
+            result.core.append(skill)
+        elif _matches(skill_lower, _KEYWORD_SETS["tools"]):
+            result.tools.append(skill)
+        elif _matches(skill_lower, _KEYWORD_SETS["functional"]):
+            result.functional.append(skill)
+        elif _matches(skill_lower, _KEYWORD_SETS["domain"]):
+            result.domain.append(skill)
+        else:
+            result.core.append(skill)  # default bucket
+    return result
