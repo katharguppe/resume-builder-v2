@@ -156,3 +156,23 @@ def test_detect_missing_empty_text_returns_all_items():
     assert "company_names" in fields_set
     assert "certifications" in fields_set
     assert "social_links" in fields_set
+
+
+def test_missing_item_has_section_field():
+    """MissingItem must accept and store a section value."""
+    from app.scoring.models import MissingItem
+    item = MissingItem(
+        field="work_dates",
+        label="Work experience dates",
+        severity="HIGH",
+        hint="Add dates.",
+        section="Experience",
+    )
+    assert item.section == "Experience"
+
+
+def test_missing_item_section_defaults_to_empty_string():
+    """section field must be optional (backwards-compatible)."""
+    from app.scoring.models import MissingItem
+    item = MissingItem(field="x", label="x", severity="HIGH", hint="x")
+    assert item.section == ""

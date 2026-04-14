@@ -20,3 +20,4 @@ class MissingItem:
     label: str
     severity: str   # "HIGH" | "MEDIUM" | "LOW"
     hint: str
+    section: str = ""  # "Experience" | "Education" | "Skills" | "Contact" | "Summary"
