@@ -66,7 +66,10 @@ def _stage2_claude(jd_fields: dict, resume_fields: dict) -> List[str]:
         system="You are a skills advisor. Respond ONLY with a valid JSON array of strings.",
         messages=[{"role": "user", "content": prompt}],
     )
-    return json.loads(_strip_fences(response.content[0].text))
+    raw = json.loads(_strip_fences(response.content[0].text))
+    if not isinstance(raw, list):
+        raise ValueError(f"Expected JSON array from LLM, got {type(raw).__name__}")
+    return [str(s) for s in raw if s is not None]
 
 
 def _stage2_gemini(jd_fields: dict, resume_fields: dict) -> List[str]:
@@ -76,7 +79,10 @@ def _stage2_gemini(jd_fields: dict, resume_fields: dict) -> List[str]:
     model = genai.GenerativeModel(config.LLM_GEMINI_EXTRACT_MODEL)
     prompt = _build_suggestion_prompt(jd_fields, resume_fields)
     response = model.generate_content(prompt)
-    return json.loads(_strip_fences(response.text))
+    raw = json.loads(_strip_fences(response.text))
+    if not isinstance(raw, list):
+        raise ValueError(f"Expected JSON array from LLM, got {type(raw).__name__}")
+    return [str(s) for s in raw if s is not None]
 
 
 def _stage2_llm(jd_fields: dict, resume_fields: dict) -> List[str]:

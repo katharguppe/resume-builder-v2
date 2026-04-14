@@ -119,3 +119,13 @@ def test_suggest_skills_empty_inputs():
     with patch("app.skills.suggester._stage2_llm", return_value=[]):
         result = suggest_skills({}, {})
     assert result == []
+
+
+def test_suggest_skills_llm_non_list_response_falls_back_to_stage1():
+    from app.skills.suggester import suggest_skills
+    jd_fields = {"required_skills": ["SQL"], "preferred_skills": []}
+    resume_fields = {"skills": []}
+    # LLM returns a dict instead of a list — should degrade gracefully to Stage 1
+    with patch("app.skills.suggester._stage2_llm", side_effect=ValueError("Expected JSON array from LLM, got dict")):
+        result = suggest_skills(jd_fields, resume_fields)
+    assert "SQL" in result
