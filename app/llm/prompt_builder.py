@@ -1,3 +1,68 @@
+import random
+import re
+from datetime import datetime
+
+
+# ── Constants ──────────────────────────────────────────────────────────────
+
+_WORD_TO_NUM = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    "eleven": 11, "twelve": 12, "fifteen": 15, "twenty": 20,
+    "twenty-five": 25, "thirty": 30,
+}
+
+
+# ── Experience detection helpers ───────────────────────────────────────────
+
+def _sum_experience_months(resume_text: str) -> int | None:
+    """
+    Attempt to derive total months of experience from resume text.
+
+    Strategy (in order):
+      1. Find all year spans (e.g. '2019 - 2023', '2020–Present'); if >= 2 found, sum and return.
+      2. Find an explicit phrase like '5+ years experience'; return that value.
+      3. Find a written phrase like 'ten years experience'; return that value.
+      4. Return None — triggers keyword fallback in detect_experience_level.
+    """
+    current_year = datetime.now().year
+    total_months = 0
+    spans_found = 0
+
+    # Pattern 1: year ranges separated by dash/en-dash/em-dash/to
+    year_span_re = re.compile(
+        r'(\d{4})\s*[-\u2013\u2014to]+\s*(\d{4}|[Pp]resent|[Cc]urrent|[Nn]ow)'
+    )
+    for m in year_span_re.finditer(resume_text):
+        start = int(m.group(1))
+        end_raw = m.group(2).lower()
+        end = current_year if end_raw in ('present', 'current', 'now') else int(m.group(2))
+        if 1950 <= start <= current_year and start <= end:
+            total_months += (end - start) * 12
+            spans_found += 1
+
+    if spans_found >= 2:
+        return total_months
+
+    # Pattern 2: "X years experience" / "X+ years of experience"
+    explicit_re = re.compile(r'(\d+)\+?\s*years?\s*(?:of\s+)?experience', re.IGNORECASE)
+    m = explicit_re.search(resume_text)
+    if m:
+        return int(m.group(1)) * 12
+
+    # Pattern 3: "ten years experience" (written number)
+    word_re = re.compile(
+        r'\b(' + '|'.join(re.escape(w) for w in _WORD_TO_NUM) + r')\b'
+        r'\s*\+?\s*years?\s*(?:of\s+)?experience',
+        re.IGNORECASE,
+    )
+    m = word_re.search(resume_text)
+    if m:
+        return _WORD_TO_NUM[m.group(1).lower()] * 12
+
+    return None
+
+
 def build_extraction_prompt(resume_text: str) -> str:
     """
     Minimal prompt for Haiku to extract name, email, phone from a resume.
