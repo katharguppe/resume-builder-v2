@@ -37,7 +37,7 @@ def _sum_experience_months(resume_text: str) -> int | None:
         start = int(m.group(1))
         end_raw = m.group(2).lower()
         end = current_year if end_raw in ('present', 'current', 'now') else int(m.group(2))
-        if 1950 <= start <= current_year and start <= end:
+        if 1950 <= start <= current_year and start <= end <= current_year + 1:
             total_months += (end - start) * 12
             spans_found += 1
 
