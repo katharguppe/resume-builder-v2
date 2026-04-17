@@ -426,42 +426,75 @@ Before writing any code:
 
     "phase-8" = @{
         model = $SONNET
-        label = "Phase 8 - Personalization Logic"
+        label = "Phase 8 - Personalization Logic (RESUME - Tasks 3-6 remaining)"
         task  = "PHASE-08"
         prompt = @'
 Stack: Python 3.13, app/llm/prompt_builder.py (extend from v1)
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
+Branch: feature/phase-02-upload-parse (31 tests passing in test_prompt_builder.py)
 Task file: tasks/PHASE-08-personalization-logic.md
 
-PHASE 8: Experience/function personalization logic
+PHASE 8 IS IN PROGRESS. Do NOT restart from scratch.
 
-Scope: app/llm/prompt_builder.py only
+Design spec:  docs/superpowers/specs/2026-04-17-phase08-personalization-design.md
+Plan file:    docs/superpowers/plans/2026-04-17-phase08-personalization.md
 
-Experience levels (detect from resume, pass to prompt):
-  fresher  (0-1y)  -> focus: education, projects, learning agility
-  early    (1-4y)  -> focus: execution, delivery, tools
-  mid      (4-8y)  -> focus: ownership, results, cross-functional
-  senior   (8y+)   -> focus: leadership, scale, strategy
+════════════════════════════════════════════════
+ALREADY DONE (do NOT re-implement):
+════════════════════════════════════════════════
+Task 1 - _sum_experience_months (commits d39ebaf + 9a0f1d5):
+  - Added imports: random, re, datetime at top of prompt_builder.py
+  - Added _WORD_TO_NUM constant
+  - Added _sum_experience_months(resume_text) -> int | None
+    Strategy: year span regex (>=2 spans to sum) -> explicit "X years" phrase
+    -> written "ten years" -> None. Future end-year cap: end <= current_year + 1.
+  - 8 tests added to tests/test_prompt_builder.py
 
-Function types (detect from JD, pass to prompt):
-  technical    -> precision, tools, architecture
-  sales        -> targets, pipeline, conversion rates
-  operations   -> process, efficiency, SLAs
-  academic     -> curriculum, research, outcomes
-  general      -> balanced across all areas
+Task 2 - _keyword_experience_level + detect_experience_level (commit 5e063ce):
+  - Added _LEVEL_KEYWORDS dict (senior/mid/early/fresher tiers)
+  - Added _keyword_experience_level(resume_text) -> str
+    Priority order: senior -> mid -> early -> fresher (most specific first)
+    Uses \b word boundaries. "internship" added to fresher (intern does not match within Internship).
+    Default "early" if no keywords found.
+  - Added detect_experience_level(resume_text) -> str
+    Duration-first (months -> bucket), keyword fallback if None.
+    Thresholds: <12 -> fresher, <48 -> early, <96 -> mid, 96+ -> senior.
+  - 17 tests added; 31 total passing in test_prompt_builder.py
+  - Spec review: PASSED. Code quality review: INTERRUPTED (session limit).
 
-Rules from PRD §6:
-  - No over-positioning - reflect actual level
-  - Tone variation - no repeated cliche phrases across candidates
-  - Bullet format: Action + Context + Outcome
-  - Recent role: 6-8 bullets | Previous: 4-6 | Older: 2-4
+════════════════════════════════════════════════
+STEP 1 - Run Task 2 code quality review first:
+════════════════════════════════════════════════
+Dispatch superpowers:code-reviewer subagent with:
+  BASE_SHA: 9a0f1d5b62dc35bbfc0a0c36ab74bbc8da38c8b5
+  HEAD_SHA: 5e063cee25993785196e86c324a1ef95016dc59a
+  WHAT: _LEVEL_KEYWORDS, _keyword_experience_level, detect_experience_level
+  FILES: app/llm/prompt_builder.py, tests/test_prompt_builder.py
+  CHECK: priority order correct? keyword lists adequate for non-tech roles?
+         word boundary matching works for multi-word keywords like "head of"?
+If any Important+ issues found: fix before continuing.
 
-Use skill: personalization for each level/function combination.
+════════════════════════════════════════════════
+STEP 2 - Continue with Tasks 3-6 from the plan:
+════════════════════════════════════════════════
+Load plan: docs/superpowers/plans/2026-04-17-phase08-personalization.md
+Execute Tasks 3, 4, 5, 6 using superpowers:subagent-driven-development.
 
-Before writing any code:
-  1. Read current app/llm/prompt_builder.py fully
-  2. Present which sections need extending vs replacing
-  3. Wait for approval
+Task 3: detect_function_type (keyword count scoring, 5 types, tie -> general)
+Task 4: _LEVEL_CONFIG + _TONE_VARIANTS (10/type) + _VERB_BANKS (100/type) + _build_personalization_block
+Task 5: Extend build_finetuning_prompt (experience_level, function_type optional params);
+        fix test_build_finetuning_prompt_no_hint_unchanged (remove strict equality assertion)
+Task 6: Update tasks/PHASE-08-personalization-logic.md + final verification
+
+IMPORTANT - Task 5 known fix:
+  In tests/test_prompt_builder.py, the existing test test_build_finetuning_prompt_no_hint_unchanged
+  currently has:  assert prompt_default == prompt_empty
+  This MUST be replaced with:
+    assert "REVISION REQUEST" not in prompt_default
+    assert "REVISION REQUEST" not in prompt_empty
+  Because randomised verb/tone sampling makes two calls produce different output (by design).
+
+Use python -m pytest (not bare pytest) for all test runs.
 '@
     }
 
