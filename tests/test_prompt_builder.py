@@ -95,3 +95,86 @@ def test_sum_experience_months_written_number():
 
 def test_sum_experience_months_no_pattern_returns_none():
     assert _sum_experience_months("I enjoy helping people and am a fast learner.") is None
+
+
+from app.llm.prompt_builder import _keyword_experience_level, detect_experience_level
+
+
+def test_keyword_experience_level_senior():
+    assert _keyword_experience_level("Jane Doe, Director of Operations") == "senior"
+
+
+def test_keyword_experience_level_senior_vp():
+    assert _keyword_experience_level("VP of Sales, EMEA region") == "senior"
+
+
+def test_keyword_experience_level_senior_head_of():
+    assert _keyword_experience_level("Head of Engineering at TechCorp") == "senior"
+
+
+def test_keyword_experience_level_mid_manager():
+    assert _keyword_experience_level("Operations Manager, 3 direct reports") == "mid"
+
+
+def test_keyword_experience_level_mid_lead():
+    assert _keyword_experience_level("Team Lead, Backend Engineering") == "mid"
+
+
+def test_keyword_experience_level_early_junior():
+    assert _keyword_experience_level("Junior Analyst at FinCo") == "early"
+
+
+def test_keyword_experience_level_early_coordinator():
+    assert _keyword_experience_level("Marketing Coordinator") == "early"
+
+
+def test_keyword_experience_level_fresher_intern():
+    assert _keyword_experience_level("Software Engineering Intern, Summer 2023") == "fresher"
+
+
+def test_keyword_experience_level_fresher_graduate():
+    assert _keyword_experience_level("Recent Graduate, BSc Computer Science") == "fresher"
+
+
+def test_keyword_experience_level_junior_manager_resolves_to_mid():
+    # "manager" (mid) found before "junior" (early) in priority order
+    assert _keyword_experience_level("Junior Manager at RetailCo") == "mid"
+
+
+def test_keyword_experience_level_no_keywords_defaults_early():
+    assert _keyword_experience_level("I enjoy helping people and love learning new things.") == "early"
+
+
+def test_detect_experience_level_uses_duration_math():
+    # 2019-2023 (4y) + 2015-2019 (4y) = 8 years → senior
+    resume = "Acme Corp 2019 - 2023\nBeta Ltd 2015 - 2019"
+    assert detect_experience_level(resume) == "senior"
+
+
+def test_detect_experience_level_fresher_bucket():
+    # < 12 months
+    resume = "Internship 2023 - 2024\nProject work 2023 - 2023"
+    # 12 + 0 = 12 months → early (boundary)
+    # Use a cleaner case: explicit phrase
+    assert detect_experience_level("6 months experience in retail. Internship 2023 - 2023") == "fresher"
+
+
+def test_detect_experience_level_early_bucket():
+    # 1-4 years: 2 year spans totalling 2 years
+    resume = "RoleA 2022 - 2023\nRoleB 2021 - 2022"
+    assert detect_experience_level(resume) == "early"
+
+
+def test_detect_experience_level_mid_bucket():
+    # 4-8 years: two spans totalling 5 years
+    resume = "RoleA 2020 - 2023\nRoleB 2018 - 2020"
+    assert detect_experience_level(resume) == "mid"
+
+
+def test_detect_experience_level_falls_back_to_keyword():
+    # No parseable dates, has a seniority keyword
+    assert detect_experience_level("Director of Marketing, award-winning campaigns") == "senior"
+
+
+def test_detect_experience_level_no_signals_defaults_early():
+    assert detect_experience_level("Passionate team player with great communication skills.") == "early"

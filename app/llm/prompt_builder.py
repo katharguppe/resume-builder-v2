@@ -12,6 +12,24 @@ _WORD_TO_NUM = {
     "twenty-five": 25, "thirty": 30,
 }
 
+_LEVEL_KEYWORDS: dict[str, list[str]] = {
+    "senior": [
+        "director", "vp", "vice president", "head of", "chief",
+        "partner", "principal", "managing director", "executive director",
+    ],
+    "mid": [
+        "manager", "lead", "specialist", "programme manager", "project manager",
+    ],
+    "early": [
+        "associate", "junior", "coordinator", "assistant", "analyst",
+        "representative", "officer", "executive",
+    ],
+    "fresher": [
+        "internship", "intern", "trainee", "graduate", "fresher", "entry level", "entry-level",
+        "apprentice",
+    ],
+}
+
 
 # ── Experience detection helpers ───────────────────────────────────────────
 
@@ -61,6 +79,43 @@ def _sum_experience_months(resume_text: str) -> int | None:
         return _WORD_TO_NUM[m.group(1).lower()] * 12
 
     return None
+
+
+def _keyword_experience_level(resume_text: str) -> str:
+    """
+    Fallback level detection via seniority keywords.
+    Checks tiers from most specific (senior) to least (fresher).
+    Returns "early" if no keywords match.
+    """
+    text = resume_text.lower()
+    for level in ("senior", "mid", "early", "fresher"):
+        for kw in _LEVEL_KEYWORDS[level]:
+            if re.search(r'\b' + re.escape(kw) + r'\b', text):
+                return level
+    return "early"
+
+
+def detect_experience_level(resume_text: str) -> str:
+    """
+    Detect candidate experience level from resume text.
+
+    Returns one of: "fresher" | "early" | "mid" | "senior"
+
+    Strategy:
+      1. Try duration math via _sum_experience_months.
+         If months found: bucket into level by total duration.
+      2. Fallback: keyword scan via _keyword_experience_level.
+    """
+    months = _sum_experience_months(resume_text)
+    if months is not None:
+        if months < 12:
+            return "fresher"
+        if months < 48:
+            return "early"
+        if months < 96:
+            return "mid"
+        return "senior"
+    return _keyword_experience_level(resume_text)
 
 
 def build_extraction_prompt(resume_text: str) -> str:
