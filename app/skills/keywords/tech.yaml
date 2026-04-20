@@ -1,0 +1,87 @@
+core:
+  - python
+  - java
+  - javascript
+  - typescript
+  - c++
+  - c#
+  - go
+  - rust
+  - kotlin
+  - swift
+  - ruby
+  - php
+  - scala
+  - react
+  - angular
+  - vue
+  - node
+  - django
+  - flask
+  - fastapi
+  - spring
+  - express
+  - sql
+  - postgresql
+  - mysql
+  - mongodb
+  - redis
+  - sqlite
+  - elasticsearch
+  - graphql
+  - rest
+  - grpc
+  - tensorflow
+  - pytorch
+  - scikit-learn
+  - pandas
+  - numpy
+  - keras
+  - html
+  - css
+  - sass
+  - tailwind
+  - machine learning
+  - deep learning
+  - nlp
+  - computer vision
+  - data analysis
+  - data engineering
+  - etl
+tools:
+  - git
+  - github
+  - gitlab
+  - bitbucket
+  - docker
+  - kubernetes
+  - helm
+  - aws
+  - azure
+  - gcp
+  - terraform
+  - ansible
+  - jenkins
+  - github actions
+  - circleci
+  - jira
+  - confluence
+  - figma
+  - postman
+  - linux
+  - bash
+  - prometheus
+  - grafana
+  - datadog
+  - splunk
+  - vs code
+  - intellij
+  - pycharm
+domain:
+  - saas
+  - cybersecurity
+  - iot
+  - blockchain
+  - devops
+  - cloud computing
+  - open source
