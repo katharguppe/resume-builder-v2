@@ -51,8 +51,25 @@ _COMPILED_PATTERNS: list[tuple[re.Pattern, list[str]]] = [
 ]
 
 
+def _replace_preserving_case(match: re.Match, alternatives: list[str]) -> str:
+    replacement = random.choice(alternatives)
+    if match.group(0)[0].isupper():
+        return replacement[0].upper() + replacement[1:]
+    return replacement
+
+
 def apply_variation(text: str) -> str:
-    raise NotImplementedError
+    """
+    Detect any phrase present in SYNONYM_GROUPS and replace it with a randomly
+    selected alternative. Preserves lead capitalisation of the match.
+    Phrases in BANNED_PHRASES with no synonym group are left untouched.
+    """
+    for pattern, alternatives in _COMPILED_PATTERNS:
+        text = pattern.sub(
+            lambda m, alts=alternatives: _replace_preserving_case(m, alts),
+            text,
+        )
+    return text
 
 
 def apply_variation_to_resume(data: dict) -> dict:
