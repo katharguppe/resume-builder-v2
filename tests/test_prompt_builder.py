@@ -223,3 +223,65 @@ def test_detect_function_type_returns_string():
     result = detect_function_type("any job description text")
     assert isinstance(result, str)
     assert result in ("technical", "sales", "operations", "academic", "general")
+
+
+from app.llm.prompt_builder import _build_personalization_block
+
+
+def test_build_personalization_block_contains_section_header():
+    block = _build_personalization_block("mid", "sales")
+    assert "=== PERSONALISATION ===" in block
+
+
+def test_build_personalization_block_contains_experience_label():
+    block = _build_personalization_block("senior", "technical")
+    assert "SENIOR" in block
+
+
+def test_build_personalization_block_contains_bullet_counts():
+    block = _build_personalization_block("early", "operations")
+    assert "bullets" in block.lower()
+
+
+def test_build_personalization_block_contains_ten_verbs():
+    block = _build_personalization_block("mid", "sales")
+    # Verbs line: "  Verb1, Verb2, ..."
+    verb_line = [ln for ln in block.splitlines() if ln.strip() and "," in ln]
+    assert len(verb_line) >= 1
+    verbs = [v.strip() for v in verb_line[0].split(",")]
+    assert len(verbs) == 10
+
+
+def test_build_personalization_block_all_levels_produce_output():
+    for level in ("fresher", "early", "mid", "senior"):
+        block = _build_personalization_block(level, "general")
+        assert isinstance(block, str) and len(block) > 50
+
+
+def test_build_personalization_block_all_function_types_produce_output():
+    for ft in ("technical", "sales", "operations", "academic", "general"):
+        block = _build_personalization_block("mid", ft)
+        assert isinstance(block, str) and len(block) > 50
+
+
+def test_build_personalization_block_verbs_vary_across_calls():
+    # With 100 verbs sampled 10 at a time, two calls should almost never match.
+    # Run 20 pairs; at least one pair must differ (p of all matching ≈ 10^-13).
+    verb_sets = set()
+    for _ in range(20):
+        block = _build_personalization_block("mid", "sales")
+        verb_line = [ln for ln in block.splitlines() if ln.strip() and "," in ln][0]
+        verbs = tuple(sorted(v.strip() for v in verb_line.split(",")))
+        verb_sets.add(verbs)
+    assert len(verb_sets) > 1, "All 20 calls produced identical verb sets — randomisation broken"
+
+
+def test_build_personalization_block_unknown_level_falls_back():
+    # Unknown level should not raise; falls back to "early" config
+    block = _build_personalization_block("unknown_level", "general")
+    assert "=== PERSONALISATION ===" in block
+
+
+def test_build_personalization_block_contains_bullet_format_instruction():
+    block = _build_personalization_block("mid", "academic")
+    assert "Action verb" in block
