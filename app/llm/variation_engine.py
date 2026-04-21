@@ -37,7 +37,7 @@ SYNONYM_GROUPS: dict[str, list[str]] = {
     "go-getter": ["motivated", "driven", "ambitious"],
     "synergy": ["collaboration", "alignment", "joint effort"],
     "leverage": ["use", "apply", "draw on"],
-    "proactive": ["forward-thinking", "anticipates needs", "takes initiative"],
+    "proactive": ["forward-thinking", "anticipates needs", "ahead of the curve"],
     "dynamic": ["adaptable", "versatile", "high-energy"],
     "passionate about": ["committed to", "focused on", "dedicated to"],
     "thought leader": ["subject matter expert", "domain expert", "recognised authority"],
