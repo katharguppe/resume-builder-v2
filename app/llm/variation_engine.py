@@ -87,7 +87,7 @@ def apply_variation_to_resume(data: dict) -> dict:
     try:
         if isinstance(result.get("summary"), str):
             result["summary"] = apply_variation(result["summary"])
-    except (KeyError, TypeError, AttributeError):
+    except (KeyError, TypeError, AttributeError):  # defensive: isinstance guard makes this unreachable in practice
         pass
 
     try:
@@ -97,7 +97,7 @@ def apply_variation_to_resume(data: dict) -> dict:
                     apply_variation(b) if isinstance(b, str) else b
                     for b in role["bullets"]
                 ]
-    except (KeyError, TypeError, AttributeError):
+    except (KeyError, TypeError, AttributeError):  # defensive: isinstance guard makes this unreachable in practice
         pass
 
     return result
