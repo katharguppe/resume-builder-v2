@@ -13,7 +13,7 @@ from app.llm.variation_engine import (
     ("cross-functional",  "She leads cross-functional teams across the business."),
     ("results-driven",    "A results-driven professional with ten years of experience."),
     ("self-starter",      "Known as a self-starter who needs minimal supervision."),
-    ("team player",       "A team player who thrives in collaborative environments."),
+    ("team player",       "A team player who gets results through coordination."),
     ("detail-oriented",   "She is detail-oriented and catches errors early."),
     ("go-getter",         "Recognised as a go-getter within the department."),
     ("synergy",           "Created synergy between product and engineering teams."),
