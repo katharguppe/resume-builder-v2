@@ -63,3 +63,69 @@ def test_apply_variation_no_replacement_phrase_untouched():
 def test_apply_variation_returns_string():
     result = apply_variation("A results-driven and dynamic professional.")
     assert isinstance(result, str)
+
+
+# ── apply_variation_to_resume tests ────────────────────────────────────────
+
+def test_apply_variation_to_resume_summary():
+    data = {
+        "candidate_name": "Alice Smith",
+        "summary": "A results-driven and detail-oriented professional.",
+        "experience": [],
+        "skills": ["Python", "results-driven"],
+        "missing_fields": [],
+    }
+    result = apply_variation_to_resume(data)
+    assert "results-driven" not in result["summary"].lower()
+    assert "detail-oriented" not in result["summary"].lower()
+
+
+def test_apply_variation_to_resume_bullets():
+    data = {
+        "candidate_name": "Bob Jones",
+        "summary": "Experienced professional.",
+        "experience": [
+            {
+                "title": "Manager",
+                "company": "Acme",
+                "dates": "2020-2024",
+                "bullets": [
+                    "Led cross-functional teams to deliver on time.",
+                    "Recognised as a thought leader in operations.",
+                ],
+            }
+        ],
+        "skills": ["leadership"],
+        "missing_fields": [],
+    }
+    result = apply_variation_to_resume(data)
+    bullets = result["experience"][0]["bullets"]
+    assert "cross-functional" not in bullets[0].lower()
+    assert "thought leader" not in bullets[1].lower()
+
+
+def test_apply_variation_to_resume_skills_untouched():
+    # skills[] are ATS keyword terms — must never be modified.
+    data = {
+        "candidate_name": "Carol Lee",
+        "summary": "Experienced professional.",
+        "experience": [],
+        "skills": ["cross-functional leadership", "results-driven delivery"],
+        "missing_fields": [],
+    }
+    result = apply_variation_to_resume(data)
+    assert result["skills"] == data["skills"]
+
+
+def test_apply_variation_to_resume_missing_keys():
+    # Empty dict and partial dicts must not raise.
+    assert apply_variation_to_resume({}) == {}
+    result = apply_variation_to_resume({"summary": "Clean professional text."})
+    assert result == {"summary": "Clean professional text."}
+
+
+def test_apply_variation_to_resume_does_not_mutate_input():
+    original_summary = "A results-driven professional."
+    data = {"summary": original_summary, "experience": [], "skills": []}
+    apply_variation_to_resume(data)
+    assert data["summary"] == original_summary

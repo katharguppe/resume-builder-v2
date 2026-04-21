@@ -73,4 +73,31 @@ def apply_variation(text: str) -> str:
 
 
 def apply_variation_to_resume(data: dict) -> dict:
-    raise NotImplementedError
+    """
+    Apply apply_variation() to prose fields in a rewrite output dict.
+
+    Modified:   summary (str), experience[i].bullets[j] (each bullet str)
+    Untouched:  skills[], contact, education, candidate_name
+
+    Deep-copies input — never mutates the caller's dict.
+    Silently skips missing or malformed fields.
+    """
+    result = copy.deepcopy(data)
+
+    try:
+        if isinstance(result.get("summary"), str):
+            result["summary"] = apply_variation(result["summary"])
+    except (KeyError, TypeError, AttributeError):
+        pass
+
+    try:
+        for role in result.get("experience", []):
+            if isinstance(role.get("bullets"), list):
+                role["bullets"] = [
+                    apply_variation(b) if isinstance(b, str) else b
+                    for b in role["bullets"]
+                ]
+    except (KeyError, TypeError, AttributeError):
+        pass
+
+    return result
