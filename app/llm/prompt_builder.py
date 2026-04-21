@@ -450,10 +450,26 @@ def build_finetuning_prompt(
     best_practice_text: str,
     candidate_name: str,
     revision_hint: str = "",
+    experience_level: str = "",
+    function_type: str = "",
 ) -> str:
     """
-    Builds the structured prompt for Claude Sonnet to fine-tune a candidate's resume against a JD.
+    Builds the structured prompt for the REWRITE provider to fine-tune a resume against a JD.
+
+    New in Phase 8:
+      experience_level: "fresher" | "early" | "mid" | "senior" — auto-detected if ""
+      function_type: "technical" | "sales" | "operations" | "academic" | "general" — auto-detected if ""
+
+    Auto-detection uses resume_text and jd_text respectively.
+    Explicit values override auto-detection (useful for tests and future UI overrides).
     """
+    if not experience_level:
+        experience_level = detect_experience_level(resume_text)
+    if not function_type:
+        function_type = detect_function_type(jd_text)
+
+    personalisation = _build_personalization_block(experience_level, function_type)
+
     prompt = f"""
 You are an expert technical recruiter and resume writer. Your task is to fine-tune the candidate's resume to better align with the provided Job Description (JD).
 You must strictly follow the provided best practice format.
@@ -479,6 +495,8 @@ Rules for every bullet point:
 2. Within each role, put the bullet most directly relevant to the JD first.
 3. Do not fabricate facts. Rephrase and reorder only - never invent experience,
    dates, companies, or qualifications not present in the source resume.
+
+{personalisation}
 
 === CRITICAL CONSTRAINT ===
 Do not invent, fabricate, or add any experience, qualifications, dates, or companies that are not present in the source resume text. You may rephrase, reorder, and reformat - but you must not add facts.

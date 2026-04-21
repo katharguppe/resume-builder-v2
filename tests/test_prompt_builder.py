@@ -45,10 +45,13 @@ def test_build_finetuning_prompt_includes_revision_hint():
 
 
 def test_build_finetuning_prompt_no_hint_unchanged():
+    # Intent: empty revision_hint behaves identically to omitting it (no REVISION REQUEST section)
     prompt_default = build_finetuning_prompt("resume", "jd", "bp", "Alice")
     prompt_empty = build_finetuning_prompt("resume", "jd", "bp", "Alice", revision_hint="")
     assert "REVISION REQUEST" not in prompt_default
-    assert prompt_default == prompt_empty
+    assert "REVISION REQUEST" not in prompt_empty
+    # Note: strict equality no longer asserted — randomised verb/tone sampling means
+    # two calls produce different PERSONALISATION blocks (by design).
 
 
 from app.llm.prompt_builder import _sum_experience_months
@@ -285,3 +288,61 @@ def test_build_personalization_block_unknown_level_falls_back():
 def test_build_personalization_block_contains_bullet_format_instruction():
     block = _build_personalization_block("mid", "academic")
     assert "Action verb" in block
+
+
+def test_build_finetuning_prompt_contains_personalisation_block():
+    prompt = build_finetuning_prompt(
+        "Software engineer with 2019 - 2021 and 2021 - 2023 at two companies.",
+        "We need a senior software engineer to architect cloud infrastructure.",
+        "best practice text",
+        "Alex Chen",
+    )
+    assert "=== PERSONALISATION ===" in prompt
+
+
+def test_build_finetuning_prompt_explicit_experience_level_respected():
+    prompt = build_finetuning_prompt(
+        "resume text with no dates",
+        "sales manager quota pipeline",
+        "best practice",
+        "Sam Lee",
+        experience_level="senior",
+    )
+    assert "SENIOR" in prompt
+
+
+def test_build_finetuning_prompt_explicit_function_type_respected():
+    prompt = build_finetuning_prompt(
+        "resume text",
+        "jd text",
+        "best practice",
+        "Jordan",
+        function_type="academic",
+    )
+    # Academic tone variant keywords appear in the block
+    assert "curriculum" in prompt.lower() or "student" in prompt.lower() or "research" in prompt.lower()
+
+
+def test_build_finetuning_prompt_personalisation_before_critical_constraint():
+    prompt = build_finetuning_prompt("resume", "jd", "bp", "Casey")
+    personalisation_pos = prompt.index("=== PERSONALISATION ===")
+    critical_pos = prompt.index("=== CRITICAL CONSTRAINT ===")
+    assert personalisation_pos < critical_pos
+
+
+def test_build_finetuning_prompt_revision_hint_still_appended():
+    prompt = build_finetuning_prompt(
+        "resume", "jd", "bp", "Alex",
+        revision_hint="Emphasise leadership more.",
+        experience_level="mid",
+        function_type="general",
+    )
+    assert "REVISION REQUEST" in prompt
+    assert "Emphasise leadership more." in prompt
+
+
+def test_build_finetuning_prompt_backward_compatible_no_new_params():
+    # Existing callers pass only the original 4 positional args — must not raise
+    prompt = build_finetuning_prompt("resume text", "jd text", "bp text", "Name")
+    assert isinstance(prompt, str)
+    assert len(prompt) > 100
