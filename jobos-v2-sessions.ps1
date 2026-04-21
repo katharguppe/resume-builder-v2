@@ -426,75 +426,24 @@ Before writing any code:
 
     "phase-8" = @{
         model = $SONNET
-        label = "Phase 8 - Personalization Logic (RESUME - Tasks 3-6 remaining)"
+        label = "Phase 8 - Personalization Logic [DONE - 329 tests]"
         task  = "PHASE-08"
         prompt = @'
-Stack: Python 3.13, app/llm/prompt_builder.py (extend from v1)
+Stack: Python 3.13, app/llm/prompt_builder.py
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
-Branch: feature/phase-02-upload-parse (31 tests passing in test_prompt_builder.py)
-Task file: tasks/PHASE-08-personalization-logic.md
+Branch: feature/phase-02-upload-parse
 
-PHASE 8 IS IN PROGRESS. Do NOT restart from scratch.
+PHASE 8 IS COMPLETE. Do NOT re-implement anything.
 
-Design spec:  docs/superpowers/specs/2026-04-17-phase08-personalization-design.md
-Plan file:    docs/superpowers/plans/2026-04-17-phase08-personalization.md
+All 6 tasks done (329 tests passing). Key commits:
+  d39ebaf + 9a0f1d5 : _sum_experience_months (year span + explicit years + cap)
+  5e063ce           : _keyword_experience_level + detect_experience_level
+  748e95e           : detect_function_type (keyword count scoring, tie -> general)
+  3cb1bde           : _build_personalization_block (100-verb bank, 10 tone variants)
+  ffa6a40           : build_finetuning_prompt extended (experience_level, function_type params)
+  cc90f0e           : task file marked COMPLETE
 
-════════════════════════════════════════════════
-ALREADY DONE (do NOT re-implement):
-════════════════════════════════════════════════
-Task 1 - _sum_experience_months (commits d39ebaf + 9a0f1d5):
-  - Added imports: random, re, datetime at top of prompt_builder.py
-  - Added _WORD_TO_NUM constant
-  - Added _sum_experience_months(resume_text) -> int | None
-    Strategy: year span regex (>=2 spans to sum) -> explicit "X years" phrase
-    -> written "ten years" -> None. Future end-year cap: end <= current_year + 1.
-  - 8 tests added to tests/test_prompt_builder.py
-
-Task 2 - _keyword_experience_level + detect_experience_level (commit 5e063ce):
-  - Added _LEVEL_KEYWORDS dict (senior/mid/early/fresher tiers)
-  - Added _keyword_experience_level(resume_text) -> str
-    Priority order: senior -> mid -> early -> fresher (most specific first)
-    Uses \b word boundaries. "internship" added to fresher (intern does not match within Internship).
-    Default "early" if no keywords found.
-  - Added detect_experience_level(resume_text) -> str
-    Duration-first (months -> bucket), keyword fallback if None.
-    Thresholds: <12 -> fresher, <48 -> early, <96 -> mid, 96+ -> senior.
-  - 17 tests added; 31 total passing in test_prompt_builder.py
-  - Spec review: PASSED. Code quality review: INTERRUPTED (session limit).
-
-════════════════════════════════════════════════
-STEP 1 - Run Task 2 code quality review first:
-════════════════════════════════════════════════
-Dispatch superpowers:code-reviewer subagent with:
-  BASE_SHA: 9a0f1d5b62dc35bbfc0a0c36ab74bbc8da38c8b5
-  HEAD_SHA: 5e063cee25993785196e86c324a1ef95016dc59a
-  WHAT: _LEVEL_KEYWORDS, _keyword_experience_level, detect_experience_level
-  FILES: app/llm/prompt_builder.py, tests/test_prompt_builder.py
-  CHECK: priority order correct? keyword lists adequate for non-tech roles?
-         word boundary matching works for multi-word keywords like "head of"?
-If any Important+ issues found: fix before continuing.
-
-════════════════════════════════════════════════
-STEP 2 - Continue with Tasks 3-6 from the plan:
-════════════════════════════════════════════════
-Load plan: docs/superpowers/plans/2026-04-17-phase08-personalization.md
-Execute Tasks 3, 4, 5, 6 using superpowers:subagent-driven-development.
-
-Task 3: detect_function_type (keyword count scoring, 5 types, tie -> general)
-Task 4: _LEVEL_CONFIG + _TONE_VARIANTS (10/type) + _VERB_BANKS (100/type) + _build_personalization_block
-Task 5: Extend build_finetuning_prompt (experience_level, function_type optional params);
-        fix test_build_finetuning_prompt_no_hint_unchanged (remove strict equality assertion)
-Task 6: Update tasks/PHASE-08-personalization-logic.md + final verification
-
-IMPORTANT - Task 5 known fix:
-  In tests/test_prompt_builder.py, the existing test test_build_finetuning_prompt_no_hint_unchanged
-  currently has:  assert prompt_default == prompt_empty
-  This MUST be replaced with:
-    assert "REVISION REQUEST" not in prompt_default
-    assert "REVISION REQUEST" not in prompt_empty
-  Because randomised verb/tone sampling makes two calls produce different output (by design).
-
-Use python -m pytest (not bare pytest) for all test runs.
+If you are here for Phase 9, launch: .\jobos-v2-sessions.ps1 -Session phase-9
 '@
     }
 
@@ -505,41 +454,54 @@ Use python -m pytest (not bare pytest) for all test runs.
         prompt = @'
 Stack: Python 3.13, app/llm/ (post-processing layer)
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
+Branch: feature/phase-02-upload-parse (329 tests passing)
 Task file: tasks/PHASE-09-language-variation-engine.md
+
+PHASE 8 IS COMPLETE. Do NOT redo it.
+  app/llm/prompt_builder.py extended with:
+    detect_experience_level(resume_text) -> str  (fresher/early/mid/senior)
+    detect_function_type(jd_text) -> str         (technical/sales/operations/academic/general)
+    _build_personalization_block(level, type) -> str  (10 verbs from 100-verb bank, 1 of 10 tone variants)
+  build_finetuning_prompt() extended with optional experience_level + function_type params.
+  54 tests in test_prompt_builder.py. 329 total passing.
 
 PHASE 9: Language Variation Engine - anti-repetition phrase rotation
 
-Scope: app/llm/variation_engine.py (new)
+Scope: app/llm/variation_engine.py (new file only)
 
 What to build:
   app/llm/variation_engine.py:
-    BANNED_PHRASES    - list of cliche phrases to detect and replace
-    SYNONYM_GROUPS    - dict of phrase -> list of alternatives
+    BANNED_PHRASES    - list of cliche phrases to detect and replace (20+ entries)
+    SYNONYM_GROUPS    - dict[str, list[str]] phrase -> alternatives (10+ groups)
     apply_variation(text: str) -> str
-      - Detect any BANNED_PHRASES in text
+      - Detect any BANNED_PHRASES in text (case-insensitive)
       - Replace with a randomly selected alternative from SYNONYM_GROUPS
-      - Log replacements for auditability
+      - If no replacement exists: leave original (do not force bad phrasing)
+      - Return modified text
 
-  Integration: call apply_variation() on rewrite output BEFORE quality check
+  Integration: call apply_variation() on rewrite output BEFORE quality check (Phase 11)
+  tests/test_variation_engine.py: one test per SYNONYM_GROUP minimum
 
-Banned phrase examples (from PRD §10.3):
-  "cross-functional collaboration" -> rotate with alternatives
-  "transforming vision into reality" -> rotate
-  "mission-driven professional" -> rotate
-  "results-oriented" -> rotate
+Banned phrase examples:
+  "cross-functional collaboration", "results-oriented", "passionate about",
+  "proven track record", "dynamic professional", "transforming vision into reality",
+  "mission-driven", "team player", "go-getter", "synergy", "leverage" (as filler),
+  "detail-oriented", "self-starter", "thought leader", "moved the needle",
+  "wear many hats", "out of the box", "value-add", "best-in-class", "world-class"
 
 Rules:
-  - NEVER change factual content - only rephrase
+  - NEVER change factual content - only rephrase cliches
   - Replacements must be grammatically correct in context
-  - If no suitable replacement exists, leave original (do not force bad phrasing)
-  - Unit-testable: each SYNONYM_GROUP must have a test
-
-Use skill: variation-engine
+  - Pure Python stdlib only - no LLM call, no new dependencies
+  - Unit-testable: each SYNONYM_GROUP must have at least one test
+  - Use python -m pytest (not bare pytest) for all test runs
 
 Before writing any code:
-  1. Present initial BANNED_PHRASES list (20+ entries)
-  2. Present initial SYNONYM_GROUPS (10+ groups)
-  3. Wait for approval
+  1. Read CLAUDE.md (orient on Phase 9 scope: app/llm/variation_engine.py only)
+  2. Read tasks/PHASE-09-language-variation-engine.md
+  3. Use superpowers:brainstorming to explore the design
+  4. Then use superpowers:writing-plans to produce an implementation plan
+  5. Present the plan. Wait for "proceed" or "approved" before writing code.
 '@
     }
 

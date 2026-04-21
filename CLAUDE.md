@@ -13,18 +13,18 @@ BEFORE touching any file:
   4. Wait for human approval
   5. Then make changes
 
-## 1. Current Phase: 0 - SETUP COMPLETE. Begin Phase 1.
-v1 foundation ported. All 12 phases queued below.
+## 1. Current Phase: 9 - Variation Engine. Phases 1-8 COMPLETE.
+v1 foundation ported. 329 tests passing. Branch: feature/phase-02-upload-parse.
 
 Phases (Option B - No Live Editor):
-  1  -> Auth              - OTP accounts, session management         [PENDING]
-  2  -> Upload/Parse      - resume + JD upload, port from v1        [PENDING]
-  3  -> ATS Score Engine  - batch scoring, keyword/skills/structure  [PENDING]
-  4  -> Review Page       - read-only output + accept/reject         [PENDING]
-  5  -> Revision Request  - re-run LLM up to 3x per session         [PENDING]
-  6  -> Missing Info      - severity-ranked panel (High/Med/Low)     [PENDING]
-  7  -> Skills Builder    - grouped suggest + edit (Core/Tools/Func) [PENDING]
-  8  -> Personalization   - experience level + function + tone       [PENDING]
+  1  -> Auth              - OTP accounts, session management         [DONE]
+  2  -> Upload/Parse      - resume + JD upload, port from v1        [DONE]
+  3  -> ATS Score Engine  - batch scoring, keyword/skills/structure  [DONE]
+  4  -> Review Page       - read-only output + accept/reject         [DONE]
+  5  -> Revision Request  - re-run LLM up to 3x per session         [DONE]
+  6  -> Missing Info      - severity-ranked panel (High/Med/Low)     [DONE]
+  7  -> Skills Builder    - grouped suggest + edit (Core/Tools/Func) [DONE]
+  8  -> Personalization   - experience level + function + tone       [DONE]
   9  -> Variation Engine  - anti-repetition phrase rotation          [PENDING]
   10 -> Payment Gate      - payment + locked download                [PENDING]
   11 -> Quality Check     - pre-output validation layer              [PENDING]

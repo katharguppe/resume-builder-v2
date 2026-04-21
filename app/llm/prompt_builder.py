@@ -88,6 +88,9 @@ def _keyword_experience_level(resume_text: str) -> str:
     Returns "early" if no keywords match.
     """
     text = resume_text.lower()
+    # Priority order: senior -> mid -> early -> fresher (most specific first).
+    # "fresher" is last because an intern who is also called a coordinator should
+    # resolve to "early", not "fresher" — the coordinator title is more current.
     for level in ("senior", "mid", "early", "fresher"):
         for kw in _LEVEL_KEYWORDS[level]:
             if re.search(r'\b' + re.escape(kw) + r'\b', text):
@@ -124,7 +127,7 @@ _FUNCTION_KEYWORDS: dict[str, list[str]] = {
     "technical": [
         "engineer", "developer", "architect", "devops", "software", "data",
         "backend", "frontend", "cloud", "infrastructure", "platform", "security",
-        "machine learning", "ml", "ai", "database", "systems", "network",
+        "machine learning", "ml", "artificial intelligence", "database", "systems", "network",
         "full stack", "fullstack", "sre", "qa",
     ],
     "sales": [
@@ -134,7 +137,7 @@ _FUNCTION_KEYWORDS: dict[str, list[str]] = {
         "prospecting", "bdr", "sdr",
     ],
     "operations": [
-        "operations", "process", "logistics", "sla", "efficiency",
+        "operations", "process", "logistics", "service level agreement", "efficiency",
         "supply chain", "fulfilment", "fulfillment", "warehouse", "procurement",
         "vendor", "compliance", "continuous improvement", "lean",
         "six sigma", "facilities", "scheduling",
@@ -313,7 +316,7 @@ _VERB_BANKS: dict[str, list[str]] = {
         "Renewed", "Resourced", "Scaled", "Scheduled", "Secured", "Simplified",
         "Sourced", "Specified", "Strengthened", "Structured", "Supervised",
         "Supported", "Transformed", "Upgraded", "Validated", "Verified",
-        "Visualised", "Won", "Optimised", "Oversaw", "Maintained",
+        "Visualised", "Won", "Mitigated", "Delegated", "Categorised",
     ],
     "academic": [
         "Designed", "Delivered", "Mentored", "Developed", "Assessed", "Facilitated",
@@ -360,7 +363,8 @@ _VERB_BANKS: dict[str, list[str]] = {
 def _build_personalization_block(experience_level: str, function_type: str) -> str:
     """
     Build the === PERSONALISATION === section for injection into the finetuning prompt.
-    Randomly samples 10 verbs from the 100-verb bank and selects 1 of 10 tone variants.
+    Randomly samples 10 verbs from the verb bank (~90-102 entries per type) and
+    selects 1 of 10 tone variants. Detection is O(text_length) and runs per call.
     Unknown experience_level falls back to "early" config.
     Unknown function_type falls back to "general".
     """

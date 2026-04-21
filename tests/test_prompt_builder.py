@@ -228,6 +228,19 @@ def test_detect_function_type_returns_string():
     assert result in ("technical", "sales", "operations", "academic", "general")
 
 
+def test_detect_function_type_maintain_not_technical():
+    # "maintain" previously matched "ai" as a substring — fixed by using "artificial intelligence"
+    jd = "Administrative Coordinator to maintain records, coordinate schedules, and support the team."
+    assert detect_function_type(jd) == "general"
+
+
+def test_verb_banks_have_no_duplicates():
+    from app.llm.prompt_builder import _VERB_BANKS
+    for ft, verbs in _VERB_BANKS.items():
+        duplicates = [v for v in verbs if verbs.count(v) > 1]
+        assert len(duplicates) == 0, f"Duplicate verbs in '{ft}' bank: {list(set(duplicates))}"
+
+
 from app.llm.prompt_builder import _build_personalization_block
 
 
