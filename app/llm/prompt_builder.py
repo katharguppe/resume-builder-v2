@@ -118,6 +118,58 @@ def detect_experience_level(resume_text: str) -> str:
     return _keyword_experience_level(resume_text)
 
 
+# ── Function type detection ────────────────────────────────────────────────
+
+_FUNCTION_KEYWORDS: dict[str, list[str]] = {
+    "technical": [
+        "engineer", "developer", "architect", "devops", "software", "data",
+        "backend", "frontend", "cloud", "infrastructure", "platform", "security",
+        "machine learning", "ml", "ai", "database", "systems", "network",
+        "full stack", "fullstack", "sre", "qa",
+    ],
+    "sales": [
+        "sales", "account executive", "account manager", "business development",
+        "quota", "pipeline", "revenue", "territory", "conversion", "client",
+        "customer success", "commercial", "partnership", "deal", "closing",
+        "prospecting", "bdr", "sdr",
+    ],
+    "operations": [
+        "operations", "process", "logistics", "sla", "efficiency",
+        "supply chain", "fulfilment", "fulfillment", "warehouse", "procurement",
+        "vendor", "compliance", "continuous improvement", "lean",
+        "six sigma", "facilities", "scheduling",
+    ],
+    "academic": [
+        "teacher", "lecturer", "curriculum", "research", "academic",
+        "faculty", "professor", "instructor", "education", "training",
+        "learning", "teaching", "pedagogy", "assessment", "school",
+        "university", "college", "classroom",
+    ],
+}
+
+
+def detect_function_type(jd_text: str) -> str:
+    """
+    Detect the function type from a job description.
+
+    Returns one of: "technical" | "sales" | "operations" | "academic" | "general"
+
+    Strategy: count keyword hits per type; highest count wins.
+    Tie or zero matches → "general".
+    """
+    text = jd_text.lower()
+    scores: dict[str, int] = {ft: 0 for ft in _FUNCTION_KEYWORDS}
+    for ft, keywords in _FUNCTION_KEYWORDS.items():
+        for kw in keywords:
+            if kw in text:
+                scores[ft] += 1
+    max_score = max(scores.values())
+    if max_score == 0:
+        return "general"
+    winners = [ft for ft, sc in scores.items() if sc == max_score]
+    return winners[0] if len(winners) == 1 else "general"
+
+
 def build_extraction_prompt(resume_text: str) -> str:
     """
     Minimal prompt for Haiku to extract name, email, phone from a resume.

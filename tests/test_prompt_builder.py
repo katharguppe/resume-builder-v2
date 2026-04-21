@@ -178,3 +178,48 @@ def test_detect_experience_level_falls_back_to_keyword():
 
 def test_detect_experience_level_no_signals_defaults_early():
     assert detect_experience_level("Passionate team player with great communication skills.") == "early"
+
+
+from app.llm.prompt_builder import detect_function_type
+
+
+def test_detect_function_type_technical():
+    jd = "We are hiring a Senior Software Engineer to architect scalable cloud infrastructure."
+    assert detect_function_type(jd) == "technical"
+
+
+def test_detect_function_type_sales():
+    jd = "Account Executive to drive sales pipeline and exceed quarterly quota. Revenue targets apply."
+    assert detect_function_type(jd) == "sales"
+
+
+def test_detect_function_type_operations():
+    jd = "Operations Manager to streamline logistics processes and meet SLA commitments."
+    assert detect_function_type(jd) == "operations"
+
+
+def test_detect_function_type_academic():
+    jd = "Experienced Lecturer to deliver curriculum and conduct research in the faculty."
+    assert detect_function_type(jd) == "academic"
+
+
+def test_detect_function_type_general_no_match():
+    jd = "We are looking for a passionate individual who loves helping others."
+    assert detect_function_type(jd) == "general"
+
+
+def test_detect_function_type_tie_returns_general():
+    # Equal keyword hits for two types → general
+    jd = "sales engineer quota software developer pipeline"
+    result = detect_function_type(jd)
+    assert result == "general"
+
+
+def test_detect_function_type_empty_string():
+    assert detect_function_type("") == "general"
+
+
+def test_detect_function_type_returns_string():
+    result = detect_function_type("any job description text")
+    assert isinstance(result, str)
+    assert result in ("technical", "sales", "operations", "academic", "general")
