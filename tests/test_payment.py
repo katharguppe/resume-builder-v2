@@ -64,3 +64,21 @@ def test_submission_record_has_payment_fields():
     )
     assert rec.payment_link_id == "plink_abc"
     assert rec.payment_id == "pay_xyz"
+
+
+# ── Provider factory tests ────────────────────────────────────────────────────
+
+def test_factory_raises_on_unknown_provider(monkeypatch):
+    monkeypatch.setenv("PAYMENT_PROVIDER", "nonexistent_pay")
+    import importlib
+    import app.payment.provider as prov_mod
+    importlib.reload(prov_mod)
+    with pytest.raises(ValueError, match="nonexistent_pay"):
+        prov_mod.get_payment_provider()
+
+
+def test_order_result_fields():
+    from app.payment.provider import OrderResult
+    r = OrderResult(link_id="plink_abc", short_url="https://rzp.io/i/abc")
+    assert r.link_id == "plink_abc"
+    assert r.short_url == "https://rzp.io/i/abc"
