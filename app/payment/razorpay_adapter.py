@@ -55,5 +55,9 @@ class RazorpayAdapter(PaymentProvider):
             logger.info("Payment verified: %s", params.get("razorpay_payment_id"))
             return True
         except razorpay.errors.SignatureVerificationError:
-            logger.warning("Payment signature verification failed for params: %s", params)
+            logger.warning(
+                "Payment signature verification failed for payment_link_id=%s payment_id=%s",
+                params.get("razorpay_payment_link_id"),
+                params.get("razorpay_payment_id"),
+            )
             return False
