@@ -222,8 +222,17 @@ def main() -> None:
         _render_pay_button(submission, subs_db)
 
     elif status == SubmissionStatus.PAYMENT_PENDING.value:
-        st.info("Payment pending. Complete payment to download your resume.")
-        _render_pay_button(submission, subs_db)
+        if submission.payment_link_id:
+            st.info("Payment already initiated. If you've completed payment, please refresh this page.")
+            st.caption(
+                "Already paid but still seeing this? The page will update automatically "
+                "when you return from the payment page. If the issue persists, contact support."
+            )
+            if st.button("Refresh", use_container_width=True):
+                st.rerun()
+        else:
+            st.info("Payment pending. Complete payment to download your resume.")
+            _render_pay_button(submission, subs_db)
 
     elif status in (
         SubmissionStatus.PAYMENT_CONFIRMED.value,
