@@ -282,3 +282,52 @@ def test_watermark_contains_preview_text(tmp_path):
     text = page.get_text()
     doc.close()
     assert "PREVIEW" in text
+
+
+# ── 6_Download.py helper tests ────────────────────────────────────────────────
+
+def test_build_callback_url_basic():
+    from app.ui.pages._download_helpers import build_callback_url
+    url = build_callback_url("http://localhost:8501", 42)
+    assert url == "http://localhost:8501/6_Download?submission_id=42"
+
+
+def test_build_callback_url_no_trailing_slash():
+    from app.ui.pages._download_helpers import build_callback_url
+    url = build_callback_url("http://localhost:8501/", 7)
+    assert url == "http://localhost:8501/6_Download?submission_id=7"
+
+
+def test_has_razorpay_callback_true():
+    from app.ui.pages._download_helpers import has_razorpay_callback
+    params = {
+        "razorpay_payment_id": "pay_abc",
+        "razorpay_payment_link_id": "plink_abc",
+        "razorpay_payment_link_reference_id": "sub_42",
+        "razorpay_payment_link_status": "paid",
+        "razorpay_signature": "sig_abc",
+    }
+    assert has_razorpay_callback(params) is True
+
+
+def test_has_razorpay_callback_false_when_empty():
+    from app.ui.pages._download_helpers import has_razorpay_callback
+    assert has_razorpay_callback({}) is False
+
+
+def test_has_razorpay_callback_false_when_partial():
+    from app.ui.pages._download_helpers import has_razorpay_callback
+    # Missing razorpay_signature
+    params = {
+        "razorpay_payment_id": "pay_abc",
+        "razorpay_payment_link_id": "plink_abc",
+    }
+    assert has_razorpay_callback(params) is False
+
+
+def test_price_paise_converts_correctly(monkeypatch):
+    monkeypatch.setenv("RESUME_DOWNLOAD_PRICE_INR", "149")
+    from app.ui.pages import _download_helpers
+    import importlib
+    importlib.reload(_download_helpers)
+    assert _download_helpers.get_price_paise() == 14900
