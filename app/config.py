@@ -34,5 +34,12 @@ class Config:
     # Auth
     OTP_EXPIRY_MINUTES: int = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
     SESSION_EXPIRY_HOURS: int = int(os.getenv("SESSION_EXPIRY_HOURS", "24"))
+    # Payment
+    PAYMENT_PROVIDER: str = os.getenv("PAYMENT_PROVIDER", "razorpay")
+    RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "")
+    RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "")
+    STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "")
+    RESUME_DOWNLOAD_PRICE_INR: int = int(os.getenv("RESUME_DOWNLOAD_PRICE_INR", "99"))
+    APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:8501")
 
 config = Config()
