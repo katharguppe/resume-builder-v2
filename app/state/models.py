@@ -35,6 +35,8 @@ class SubmissionRecord:
     updated_at: Optional[str]
     llm_output_json: Optional[str] = None
     output_pdf_path: Optional[str] = None
+    payment_link_id: Optional[str] = None
+    payment_id: Optional[str] = None
 
 class CandidateStatus(str, Enum):
     PENDING = "PENDING"
