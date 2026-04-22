@@ -507,44 +507,37 @@ Before writing any code:
 
     "phase-10" = @{
         model = $SONNET
-        label = "Phase 10 - Payment Gate + Locked Download"
+        label = "Phase 10 - Payment Gate + Locked Download [DONE - 378 tests]"
         task  = "PHASE-10"
         prompt = @'
-Stack: Python 3.13, Streamlit, Razorpay (default) or Stripe, SQLite
+Stack: Python 3.13, Streamlit, Razorpay, SQLite
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
-Task file: tasks/PHASE-10-payment-gate-locked-download.md
+Branch: feature/phase-02-upload-parse
 
-PHASE 10: Payment gate + locked PDF download
+PHASE 10 IS COMPLETE. Do NOT re-implement anything.
 
-Scope: app/payment/ (new) + app/ui/pages/6_Download.py
+378 tests passing. Key commits:
+  4c7224d : razorpay>=1.3.0 added to requirements.txt
+  855838c : payment config fields (PAYMENT_PROVIDER, RAZORPAY_KEY_*, APP_BASE_URL)
+  5a12250 : payment_link_id + payment_id columns in SubmissionsDB + SubmissionRecord
+  42de9e9 : PaymentProvider ABC + OrderResult dataclass + factory
+  1622d18 : RazorpayAdapter (Payment Links create_order + HMAC verify_payment)
+  469b9c7 : fix: don't log razorpay_signature in verify_payment failure path
+  a37807a : StripeAdapter stub (NotImplementedError)
+  f5ad73e : watermark_pdf_bytes (PyMuPDF, in-memory, source untouched)
+  878673b : _download_helpers (build_callback_url, has_razorpay_callback, get_price_paise)
+  500f47f : 6_Download.py — payment gate, watermark, Razorpay callback verify
+  16a2d31 : fix: prevent duplicate payment link on PAYMENT_PENDING re-entry
+  efb104d : checkpoint: payment gate complete
+  931d28e : docs: design spec + implementation plan committed
 
-What to build:
-  app/payment/__init__.py
-  app/payment/provider.py  - PaymentProvider adapter
-                             create_order(amount, currency) -> order_id
-                             verify_payment(payment_id, order_id, signature) -> bool
-                             Supports: PAYMENT_PROVIDER=razorpay | stripe
+New module: app/payment/ (provider, razorpay_adapter, stripe_adapter, watermark)
+New page  : app/ui/pages/6_Download.py
+New helper: app/ui/pages/_download_helpers.py
+DB        : payment_link_id + payment_id columns in submissions table
+25 new tests in tests/test_payment.py
 
-  app/ui/pages/6_Download.py:
-    - Show resume preview (watermarked if unpaid)
-    - Show price (RESUME_DOWNLOAD_PRICE_INR from .env)
-    - [Pay & Download] button -> Razorpay/Stripe checkout
-    - On payment_confirmed: unlock and serve PDF
-    - On failure: show error, allow retry
-
-  app/state/db.py - add: payment_status, payment_id, payment_order_id columns
-  app/state/models.py - add PAYMENT_PENDING, PAYMENT_CONFIRMED, DOWNLOAD_READY, DOWNLOADED
-
-Rules:
-  - Download is LOCKED until payment_confirmed = true in DB
-  - Verify payment server-side (signature check) - never trust client
-  - Watermark PDF before payment: semi-transparent "PREVIEW" overlay
-  - After payment: serve clean PDF, log DOWNLOADED status
-
-Before writing any code:
-  1. Present payment provider adapter design
-  2. Confirm: Razorpay for India market (default)?
-  3. Wait for approval
+If you are here for Phase 11, launch: .\jobos-v2-sessions.ps1 -Session phase-11
 '@
     }
 
@@ -555,16 +548,26 @@ Before writing any code:
         prompt = @'
 Stack: Python 3.13, app/llm/ (REWRITE provider)
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
+Branch: feature/phase-02-upload-parse (378 tests passing)
 Task file: tasks/PHASE-11-quality-check-layer.md
+
+PHASE 10 IS COMPLETE. Do NOT redo it.
+  app/payment/ module: RazorpayAdapter (Payment Links + HMAC verify), StripeAdapter stub,
+    watermark_pdf_bytes (PyMuPDF in-memory), PaymentProvider ABC + factory.
+  app/ui/pages/6_Download.py: payment gate page, watermarked preview, callback verify,
+    clean PDF served only after PAYMENT_CONFIRMED. Duplicate link guard on re-entry.
+  app/ui/pages/_download_helpers.py: build_callback_url, has_razorpay_callback, get_price_paise.
+  DB: payment_link_id + payment_id columns in submissions table.
+  25 new tests in tests/test_payment.py. 378 total passing.
 
 PHASE 11: Quality Check Layer - pre-output validation before candidate sees resume
 
-Scope: app/llm/quality_check.py (new)
+Scope: app/llm/quality_check.py (new file only)
 
 What to build:
   app/llm/quality_check.py:
     validate_quality(resume_draft: dict, original: dict) -> QualityReport
-      Checks (from PRD §10.10):
+      Checks:
         1. tone_repetitive      - same phrases across sections?
         2. experience_exaggerated - claims beyond original?
         3. bullets_too_long     - bullets > 30 words?
@@ -582,11 +585,14 @@ Rules:
   - String-based checks (bullet length, section order) are pure Python - no LLM
   - Must complete in < 5s total
   - All checks must be unit-testable with mock resume data
+  - Use python -m pytest (not bare pytest) for all test runs
 
 Before writing any code:
-  1. Read app/llm/variation_engine.py (Phase 9 output)
-  2. Present quality check algorithm design
-  3. Wait for approval
+  1. Read app/llm/variation_engine.py (Phase 9 output - apply_variation_to_resume)
+  2. Read app/llm/finetuner.py (understand where to wire quality check in pipeline)
+  3. Use superpowers:brainstorming to explore the design
+  4. Then use superpowers:writing-plans to produce an implementation plan
+  5. Present the plan. Wait for approval before writing code.
 '@
     }
 
