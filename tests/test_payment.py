@@ -204,3 +204,81 @@ def test_factory_returns_razorpay_adapter(monkeypatch):
     from app.payment.razorpay_adapter import RazorpayAdapter
     provider = prov_mod.get_payment_provider()
     assert isinstance(provider, RazorpayAdapter)
+
+
+# ── Stripe stub tests ─────────────────────────────────────────────────────────
+
+def test_stripe_create_order_raises_not_implemented():
+    from app.payment.stripe_adapter import StripeAdapter
+    adapter = StripeAdapter()
+    with pytest.raises(NotImplementedError, match="Stripe"):
+        adapter.create_order(9900, "INR", "ref_1", "http://cb.url/")
+
+
+def test_stripe_verify_payment_raises_not_implemented():
+    from app.payment.stripe_adapter import StripeAdapter
+    adapter = StripeAdapter()
+    with pytest.raises(NotImplementedError, match="Stripe"):
+        adapter.verify_payment({})
+
+
+def test_factory_returns_stripe_stub(monkeypatch):
+    monkeypatch.setenv("PAYMENT_PROVIDER", "stripe")
+    import importlib
+    import app.payment.provider as prov_mod
+    importlib.reload(prov_mod)
+    from app.payment.stripe_adapter import StripeAdapter
+    provider = prov_mod.get_payment_provider()
+    assert isinstance(provider, StripeAdapter)
+
+
+# ── Watermark tests ───────────────────────────────────────────────────────────
+
+import fitz  # PyMuPDF
+
+
+def _make_minimal_pdf(path) -> None:
+    """Create a one-page PDF with 'Hello' text for testing."""
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text(fitz.Point(100, 100), "Hello Resume", fontsize=14)
+    doc.save(str(path))
+    doc.close()
+
+
+def test_watermark_returns_bytes(tmp_path):
+    pdf_path = tmp_path / "test.pdf"
+    _make_minimal_pdf(pdf_path)
+    from app.payment.watermark import watermark_pdf_bytes
+    result = watermark_pdf_bytes(pdf_path)
+    assert isinstance(result, bytes)
+    assert len(result) > 0
+
+
+def test_watermark_does_not_modify_source(tmp_path):
+    pdf_path = tmp_path / "test.pdf"
+    _make_minimal_pdf(pdf_path)
+    original_bytes = pdf_path.read_bytes()
+    from app.payment.watermark import watermark_pdf_bytes
+    watermark_pdf_bytes(pdf_path)
+    assert pdf_path.read_bytes() == original_bytes
+
+
+def test_watermark_output_is_valid_pdf(tmp_path):
+    pdf_path = tmp_path / "test.pdf"
+    _make_minimal_pdf(pdf_path)
+    from app.payment.watermark import watermark_pdf_bytes
+    result = watermark_pdf_bytes(pdf_path)
+    assert result[:4] == b"%PDF"
+
+
+def test_watermark_contains_preview_text(tmp_path):
+    pdf_path = tmp_path / "test.pdf"
+    _make_minimal_pdf(pdf_path)
+    from app.payment.watermark import watermark_pdf_bytes
+    result = watermark_pdf_bytes(pdf_path)
+    doc = fitz.open(stream=result, filetype="pdf")
+    page = doc[0]
+    text = page.get_text()
+    doc.close()
+    assert "PREVIEW" in text
