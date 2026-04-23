@@ -49,6 +49,26 @@ def _check_bullets_too_long(working_draft: dict) -> list[str]:
 
 
 def _check_recent_exp_prioritized(working_draft: dict) -> list[str]:
+    """Flag if experience[0] has fewer bullets than any other role."""
+    experience = working_draft.get("experience", []) or []
+    if not isinstance(experience, list) or len(experience) < 2:
+        return []
+
+    first_role = experience[0]
+    if not isinstance(first_role, dict):
+        return []
+
+    first_count = len(first_role.get("bullets", []) or [])
+    max_other = max(
+        (len(role.get("bullets", []) or []) for role in experience[1:] if isinstance(role, dict)),
+        default=0,
+    )
+
+    if first_count < max_other:
+        return [
+            f"[NEEDS REVIEW] Most recent role has fewer bullets than another role "
+            f"({first_count} vs {max_other})"
+        ]
     return []
 
 

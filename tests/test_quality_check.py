@@ -1,5 +1,5 @@
 import copy
-from app.llm.quality_check import QualityReport, validate_quality, _check_bullets_too_long, BULLET_MAX_WORDS
+from app.llm.quality_check import QualityReport, validate_quality, _check_bullets_too_long, _check_recent_exp_prioritized, BULLET_MAX_WORDS
 
 SAMPLE_DRAFT = {
     "candidate_name": "Jane Doe",
@@ -102,3 +102,49 @@ def test_bullets_too_long_non_string_bullet_no_crash():
     draft = {"experience": [{"title": "Manager", "bullets": [None, 42]}]}
     issues = _check_bullets_too_long(draft)
     assert issues == []
+
+
+def test_recent_exp_first_role_more_bullets_no_issue():
+    draft = {
+        "experience": [
+            {"title": "Manager", "bullets": ["a", "b", "c"]},
+            {"title": "Executive", "bullets": ["x", "y"]},
+        ]
+    }
+    assert _check_recent_exp_prioritized(draft) == []
+
+
+def test_recent_exp_first_role_equal_bullets_no_issue():
+    draft = {
+        "experience": [
+            {"title": "Manager", "bullets": ["a", "b"]},
+            {"title": "Executive", "bullets": ["x", "y"]},
+        ]
+    }
+    assert _check_recent_exp_prioritized(draft) == []
+
+
+def test_recent_exp_first_role_fewer_bullets_flagged():
+    draft = {
+        "experience": [
+            {"title": "Manager", "bullets": ["a", "b"]},
+            {"title": "Executive", "bullets": ["x", "y", "z"]},
+        ]
+    }
+    issues = _check_recent_exp_prioritized(draft)
+    assert len(issues) == 1
+    assert issues[0].startswith("[NEEDS REVIEW]")
+    assert "2" in issues[0] and "3" in issues[0]
+
+
+def test_recent_exp_single_role_no_issue():
+    draft = {"experience": [{"title": "Manager", "bullets": ["a", "b"]}]}
+    assert _check_recent_exp_prioritized(draft) == []
+
+
+def test_recent_exp_missing_experience_no_crash():
+    assert _check_recent_exp_prioritized({}) == []
+
+
+def test_recent_exp_empty_experience_no_crash():
+    assert _check_recent_exp_prioritized({"experience": []}) == []
