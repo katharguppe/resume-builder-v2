@@ -89,7 +89,7 @@ def test_bullets_too_long_mutates_working_draft():
     }
     _check_bullets_too_long(draft)
     trimmed = draft["experience"][0]["bullets"][0]
-    assert len(trimmed.split()) <= BULLET_MAX_WORDS + 1  # +1 for "…" appended as one token
+    assert len(trimmed.split()) == BULLET_MAX_WORDS  # ellipsis is glued to word 30, not a separate token
     assert trimmed.endswith("…")
 
 
