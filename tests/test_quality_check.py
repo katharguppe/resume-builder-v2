@@ -1,5 +1,5 @@
 import copy
-from app.llm.quality_check import QualityReport, validate_quality, _check_bullets_too_long, _check_recent_exp_prioritized, BULLET_MAX_WORDS
+from app.llm.quality_check import QualityReport, validate_quality, _check_bullets_too_long, _check_recent_exp_prioritized, _check_jd_keywords_present, BULLET_MAX_WORDS
 
 SAMPLE_DRAFT = {
     "candidate_name": "Jane Doe",
@@ -148,3 +148,55 @@ def test_recent_exp_missing_experience_no_crash():
 
 def test_recent_exp_empty_experience_no_crash():
     assert _check_recent_exp_prioritized({"experience": []}) == []
+
+
+def test_jd_keywords_none_jd_fields_skipped():
+    draft = copy.deepcopy(SAMPLE_DRAFT)
+    assert _check_jd_keywords_present(draft, None) == []
+
+
+def test_jd_keywords_empty_required_skills_no_issue():
+    draft = copy.deepcopy(SAMPLE_DRAFT)
+    assert _check_jd_keywords_present(draft, {"required_skills": []}) == []
+
+
+def test_jd_keywords_keyword_in_summary_no_issue():
+    draft = copy.deepcopy(SAMPLE_DRAFT)
+    # "sales" is in the summary
+    issues = _check_jd_keywords_present(draft, {"required_skills": ["sales"]})
+    assert issues == []
+
+
+def test_jd_keywords_keyword_in_bullets_no_issue():
+    draft = copy.deepcopy(SAMPLE_DRAFT)
+    # "revenue" is in a bullet
+    issues = _check_jd_keywords_present(draft, {"required_skills": ["revenue"]})
+    assert issues == []
+
+
+def test_jd_keywords_keyword_in_skills_no_issue():
+    draft = copy.deepcopy(SAMPLE_DRAFT)
+    # "CRM" is in skills
+    issues = _check_jd_keywords_present(draft, {"required_skills": ["crm"]})
+    assert issues == []
+
+
+def test_jd_keywords_missing_keyword_flagged():
+    draft = copy.deepcopy(SAMPLE_DRAFT)
+    issues = _check_jd_keywords_present(draft, {"required_skills": ["stakeholder management"]})
+    assert len(issues) == 1
+    assert issues[0].startswith("[NEEDS REVIEW]")
+    assert "stakeholder management" in issues[0]
+
+
+def test_jd_keywords_case_insensitive():
+    draft = copy.deepcopy(SAMPLE_DRAFT)
+    # "Salesforce" in skills, keyword passed as uppercase
+    issues = _check_jd_keywords_present(draft, {"required_skills": ["SALESFORCE"]})
+    assert issues == []
+
+
+def test_jd_keywords_missing_experience_no_crash():
+    issues = _check_jd_keywords_present({}, {"required_skills": ["python"]})
+    assert len(issues) == 1
+    assert "python" in issues[0]

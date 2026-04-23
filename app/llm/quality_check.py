@@ -73,7 +73,32 @@ def _check_recent_exp_prioritized(working_draft: dict) -> list[str]:
 
 
 def _check_jd_keywords_present(working_draft: dict, jd_fields: dict | None) -> list[str]:
-    return []
+    """Flag required JD skills absent from resume. Skipped entirely when jd_fields is None."""
+    if not jd_fields:
+        return []
+
+    required_skills = jd_fields.get("required_skills", [])
+    if not isinstance(required_skills, list):
+        return []
+
+    summary = working_draft.get("summary", "") or ""
+    bullets: list[str] = [
+        b
+        for role in (working_draft.get("experience", []) or [])
+        if isinstance(role, dict)
+        for b in (role.get("bullets", []) or [])
+        if isinstance(b, str)
+    ]
+    skills: list[str] = [
+        s for s in (working_draft.get("skills", []) or []) if isinstance(s, str)
+    ]
+    full_text = " ".join([summary] + bullets + skills).lower()
+
+    return [
+        f"[NEEDS REVIEW] JD keyword missing from resume: '{kw}'"
+        for kw in required_skills
+        if isinstance(kw, str) and kw.lower() not in full_text
+    ]
 
 
 def _check_experience_exaggerated(
