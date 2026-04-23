@@ -251,3 +251,80 @@ def test_exaggerated_number_in_summary_checked():
     original = "Worked on sales pipeline."  # no 2000000
     issues = _check_experience_exaggerated(bullets, summary, original)
     assert any("2000000" in i for i in issues)
+
+
+from app.llm.quality_check import _check_tone_repetitive, NGRAM_SIZE, WORD_FREQ_THRESHOLD
+
+
+def test_tone_repetitive_unique_text_no_issue():
+    summary = "Dedicated sales professional with B2B expertise."
+    experience = [
+        {"bullets": ["Increased revenue by 25% across three regions."]},
+        {"bullets": ["Developed client relationships with enterprise accounts."]},
+    ]
+    issues = _check_tone_repetitive(summary, experience)
+    assert issues == []
+
+
+def test_tone_repetitive_ngram_across_sections_flagged():
+    # "managed a team of" appears in both summary and a role's bullets
+    summary = "Senior leader who managed a team of high performers."
+    experience = [
+        {"bullets": ["Managed a team of 10 sales representatives."]},
+    ]
+    issues = _check_tone_repetitive(summary, experience)
+    ngram_issues = [i for i in issues if "managed a team of" in i.lower()]
+    assert len(ngram_issues) >= 1
+    assert all(i.startswith("[NEEDS REVIEW]") for i in ngram_issues)
+
+
+def test_tone_repetitive_same_ngram_within_one_section_not_flagged():
+    # Repetition within one role is not cross-section
+    summary = ""
+    experience = [
+        {"bullets": [
+            "Managed a team of five.",
+            "Managed a team of ten.",
+        ]},
+    ]
+    issues = _check_tone_repetitive(summary, experience)
+    # same ngram within one section only — should NOT be flagged as cross-section
+    ngram_issues = [i for i in issues if "Repetitive phrase" in i]
+    assert ngram_issues == []
+
+
+def test_tone_repetitive_word_freq_threshold_flagged():
+    # "managed" repeated WORD_FREQ_THRESHOLD times across draft
+    repeated_word = "managed"
+    summary = f"{repeated_word} budgets effectively."
+    bullets = [f"{repeated_word} stakeholders." for _ in range(WORD_FREQ_THRESHOLD - 1)]
+    experience = [{"bullets": bullets}]
+    issues = _check_tone_repetitive(summary, experience)
+    freq_issues = [i for i in issues if repeated_word in i and "times" in i]
+    assert len(freq_issues) >= 1
+
+
+def test_tone_repetitive_word_below_threshold_not_flagged():
+    summary = "Led the team."
+    experience = [
+        {"bullets": ["Led initiatives.", "Led projects."]},
+    ]
+    # "led" appears 3 times — below default threshold of 4
+    issues = _check_tone_repetitive(summary, experience)
+    freq_issues = [i for i in issues if "'led'" in i]
+    assert freq_issues == []
+
+
+def test_tone_repetitive_short_text_no_crash():
+    # Text shorter than NGRAM_SIZE words
+    summary = "Sales."
+    experience = [{"bullets": ["Led."]}]
+    issues = _check_tone_repetitive(summary, experience)
+    assert isinstance(issues, list)
+
+
+def test_tone_repetitive_missing_bullets_key_no_crash():
+    summary = "Professional."
+    experience = [{"title": "Manager"}]  # no "bullets" key
+    issues = _check_tone_repetitive(summary, experience)
+    assert isinstance(issues, list)

@@ -127,8 +127,57 @@ def _check_experience_exaggerated(
     ]
 
 
+def _make_section_ngrams(text: str, n: int) -> set[str]:
+    """Return all unique n-grams from lowercased text. Returns empty set if text has fewer than n words."""
+    words = re.findall(r"\b\w+\b", text.lower())
+    if len(words) < n:
+        return set()
+    return {" ".join(words[i : i + n]) for i in range(len(words) - n + 1)}
+
+
 def _check_tone_repetitive(summary: str, experience: list[dict]) -> list[str]:
-    return []
+    """
+    Flag:
+    - Any NGRAM_SIZE-word phrase appearing in 2+ sections (summary / per-role bullets).
+    - Any non-stopword appearing >= WORD_FREQ_THRESHOLD times across the whole draft.
+    """
+    # Build sections: summary + one text block per role
+    sections: list[str] = []
+    if summary.strip():
+        sections.append(summary)
+    for role in experience:
+        if not isinstance(role, dict):
+            continue
+        bullets = role.get("bullets", []) or []
+        role_text = " ".join(b for b in bullets if isinstance(b, str))
+        if role_text.strip():
+            sections.append(role_text)
+
+    issues: list[str] = []
+
+    # ── N-gram cross-section check ────────────────────────────────────────────
+    ngram_section_count: dict[str, int] = {}
+    for section_text in sections:
+        for ng in _make_section_ngrams(section_text, NGRAM_SIZE):
+            ngram_section_count[ng] = ngram_section_count.get(ng, 0) + 1
+
+    for ng, count in ngram_section_count.items():
+        if count >= 2:
+            issues.append(f"[NEEDS REVIEW] Repetitive phrase across sections: '{ng}'")
+
+    # ── Word-frequency check ──────────────────────────────────────────────────
+    all_text = " ".join(sections)
+    tokens = re.findall(r"\b[a-z]+\b", all_text.lower())
+    word_counts: dict[str, int] = {}
+    for token in tokens:
+        if token not in _STOPWORDS:
+            word_counts[token] = word_counts.get(token, 0) + 1
+
+    for word, count in word_counts.items():
+        if count >= WORD_FREQ_THRESHOLD:
+            issues.append(f"[NEEDS REVIEW] Word '{word}' used {count} times across draft")
+
+    return issues
 
 
 def validate_quality(
