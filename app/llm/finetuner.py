@@ -13,6 +13,7 @@ from app.llm.prompt_builder import (
     build_jd_extraction_prompt,
 )
 from app.llm.variation_engine import apply_variation_to_resume
+from app.llm.quality_check import validate_quality
 
 logger = logging.getLogger("llm")
 
@@ -110,7 +111,9 @@ def rewrite_resume(resume_text: str, jd_text: str, best_practice: str, revision_
                 messages=[{"role": "user", "content": prompt}],
             )
             result = json.loads(_strip_markdown_fences(response.content[0].text))
-            return apply_variation_to_resume(result)
+            draft = apply_variation_to_resume(result)
+            report = validate_quality(draft, {"raw_text": resume_text})
+            return report.fixed_draft
         except json.JSONDecodeError as e:
             logger.warning(f"rewrite_resume attempt {attempt}/{config.MAX_LLM_RETRIES} failed to parse JSON: {e}")
             if attempt == config.MAX_LLM_RETRIES:
@@ -265,7 +268,9 @@ def rewrite_resume_deepseek(resume_text: str, jd_text: str, best_practice: str, 
                 ],
             )
             result = json.loads(_strip_markdown_fences(response.choices[0].message.content))
-            return apply_variation_to_resume(result)
+            draft = apply_variation_to_resume(result)
+            report = validate_quality(draft, {"raw_text": resume_text})
+            return report.fixed_draft
         except json.JSONDecodeError as e:
             logger.warning(
                 f"rewrite_resume_deepseek attempt {attempt}/{config.MAX_LLM_RETRIES} bad JSON: {e}"
