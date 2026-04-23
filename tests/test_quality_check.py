@@ -1,4 +1,5 @@
 import copy
+from unittest.mock import patch
 from app.llm.quality_check import QualityReport, validate_quality, _check_bullets_too_long, _check_recent_exp_prioritized, _check_jd_keywords_present, BULLET_MAX_WORDS
 
 SAMPLE_DRAFT = {
@@ -27,7 +28,7 @@ SAMPLE_DRAFT = {
     "education": [{"degree": "BBA", "institution": "Delhi University", "year": "2018"}],
 }
 
-SAMPLE_ORIGINAL = {"raw_text": "Managed a team of 10 sales reps. Increased revenue by 25%."}
+SAMPLE_ORIGINAL = {"raw_text": "Managed a team of 10 sales reps. Increased revenue by 25%. Worked with 50 accounts."}
 
 
 def test_quality_report_fields():
@@ -328,3 +329,69 @@ def test_tone_repetitive_missing_bullets_key_no_crash():
     experience = [{"title": "Manager"}]  # no "bullets" key
     issues = _check_tone_repetitive(summary, experience)
     assert isinstance(issues, list)
+
+
+# ── Integration tests for validate_quality() ────────────────────────────────
+
+
+def test_validate_quality_clean_draft_passes():
+    report = validate_quality(SAMPLE_DRAFT, SAMPLE_ORIGINAL)
+    # SAMPLE_DRAFT has no new numbers vs original (25%, 10, and 50 all match), no over-long bullets,
+    # first role has 2 bullets vs second role's 1 — so no [NEEDS REVIEW] issues expected
+    assert report.passed is True
+    assert report.fixed_draft is not SAMPLE_DRAFT  # deep copy
+
+
+def test_validate_quality_long_bullet_auto_fixed_passes():
+    draft = copy.deepcopy(SAMPLE_DRAFT)
+    long_bullet = " ".join([f"word{i}" for i in range(35)])
+    draft["experience"][0]["bullets"].append(long_bullet)
+    report = validate_quality(draft, SAMPLE_ORIGINAL)
+    # Auto-fixed bullet → [AUTO-FIXED] issue logged but passed is still True
+    assert report.passed is True
+    auto_fixed = [i for i in report.issues if i.startswith("[AUTO-FIXED]")]
+    assert len(auto_fixed) >= 1
+
+
+def test_validate_quality_exaggerated_metric_fails():
+    draft = copy.deepcopy(SAMPLE_DRAFT)
+    draft["experience"][0]["bullets"].append("Delivered 5,000,000 in new pipeline revenue.")
+    # 5,000,000 not in SAMPLE_ORIGINAL raw_text
+    report = validate_quality(draft, SAMPLE_ORIGINAL)
+    assert report.passed is False
+    review_issues = [i for i in report.issues if i.startswith("[NEEDS REVIEW]")]
+    assert len(review_issues) >= 1
+
+
+def test_validate_quality_missing_jd_keyword_fails():
+    report = validate_quality(
+        SAMPLE_DRAFT,
+        SAMPLE_ORIGINAL,
+        jd_fields={"required_skills": ["machine learning"]},
+    )
+    assert report.passed is False
+    assert any("machine learning" in i for i in report.issues)
+
+
+def test_validate_quality_jd_none_keyword_check_skipped():
+    # No jd_fields → keyword check absent from issues entirely
+    report = validate_quality(SAMPLE_DRAFT, SAMPLE_ORIGINAL, jd_fields=None)
+    assert not any("JD keyword" in i for i in report.issues)
+
+
+def test_validate_quality_failing_check_does_not_crash():
+    # Patch one check to raise — other checks must still run
+    with patch(
+        "app.llm.quality_check._check_bullets_too_long",
+        side_effect=RuntimeError("boom"),
+    ) as mock_check:
+        # Mock needs a __name__ for logging to work
+        mock_check.__name__ = "_check_bullets_too_long"
+        report = validate_quality(SAMPLE_DRAFT, SAMPLE_ORIGINAL)
+    assert isinstance(report, QualityReport)
+
+
+def test_validate_quality_input_not_mutated_integration():
+    original_draft = copy.deepcopy(SAMPLE_DRAFT)
+    validate_quality(SAMPLE_DRAFT, SAMPLE_ORIGINAL)
+    assert SAMPLE_DRAFT == original_draft
