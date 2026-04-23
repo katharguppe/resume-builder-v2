@@ -16,7 +16,7 @@ _STOPWORDS: frozenset[str] = frozenset(
     {"and", "the", "to", "of", "in", "a", "for", "with", "on", "is", "was", "at", "by", "an", "as"}
 )
 
-_NUMBER_RE = re.compile(r"\b\d[\d,]*(?:\.\d+)?%?\b")
+_NUMBER_RE = re.compile(r"\b\d[\d,]*(?:\.\d+)?\b")
 
 
 @dataclass

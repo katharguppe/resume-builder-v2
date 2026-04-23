@@ -206,7 +206,7 @@ from app.llm.quality_check import _check_experience_exaggerated
 
 
 def test_exaggerated_same_numbers_no_issue():
-    # 25 and 10 appear in both original and draft
+    # 25% and 10 appear in both original and draft (tokens matched with % suffix)
     bullets = ["Increased revenue by 25% across 10 regions."]
     summary = ""
     original = "Increased revenue by 25% across 10 regions."
