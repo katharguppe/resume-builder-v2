@@ -200,3 +200,54 @@ def test_jd_keywords_missing_experience_no_crash():
     issues = _check_jd_keywords_present({}, {"required_skills": ["python"]})
     assert len(issues) == 1
     assert "python" in issues[0]
+
+
+from app.llm.quality_check import _check_experience_exaggerated
+
+
+def test_exaggerated_same_numbers_no_issue():
+    # 25 and 10 appear in both original and draft
+    bullets = ["Increased revenue by 25% across 10 regions."]
+    summary = ""
+    original = "Increased revenue by 25% across 10 regions."
+    assert _check_experience_exaggerated(bullets, summary, original) == []
+
+
+def test_exaggerated_new_percentage_flagged():
+    bullets = ["Increased revenue by 40%."]
+    summary = ""
+    original = "Increased revenue through targeted campaigns."  # no 40%
+    issues = _check_experience_exaggerated(bullets, summary, original)
+    assert any("40%" in i for i in issues)
+    assert all(i.startswith("[NEEDS REVIEW]") for i in issues)
+
+
+def test_exaggerated_new_integer_flagged():
+    bullets = ["Managed a team of 200 people."]
+    summary = ""
+    original = "Managed a small sales team."  # no 200
+    issues = _check_experience_exaggerated(bullets, summary, original)
+    assert any("200" in i for i in issues)
+
+
+def test_exaggerated_no_numbers_in_draft_no_issue():
+    bullets = ["Led cross-functional initiatives across regions."]
+    summary = ""
+    original = "Led initiatives with 5 teams."
+    assert _check_experience_exaggerated(bullets, summary, original) == []
+
+
+def test_exaggerated_empty_original_flags_all_draft_numbers():
+    bullets = ["Hit 150 percent of quota in Q3."]
+    summary = ""
+    original = ""
+    issues = _check_experience_exaggerated(bullets, summary, original)
+    assert len(issues) >= 1  # 150 is new
+
+
+def test_exaggerated_number_in_summary_checked():
+    bullets = []
+    summary = "Generated 2000000 in new pipeline."
+    original = "Worked on sales pipeline."  # no 2000000
+    issues = _check_experience_exaggerated(bullets, summary, original)
+    assert any("2000000" in i for i in issues)

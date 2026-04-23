@@ -104,7 +104,27 @@ def _check_jd_keywords_present(working_draft: dict, jd_fields: dict | None) -> l
 def _check_experience_exaggerated(
     all_bullets: list[str], summary: str, original_raw_text: str
 ) -> list[str]:
-    return []
+    """Flag numeric tokens in draft not present in original resume text."""
+    # Extract numbers including trailing % if present
+    def extract_numbers_with_percent(text: str) -> set[str]:
+        nums = set()
+        for match in _NUMBER_RE.finditer(text):
+            num_str = match.group(0)
+            # Check if a % follows immediately after the match
+            end_pos = match.end()
+            if end_pos < len(text) and text[end_pos] == "%":
+                num_str += "%"
+            nums.add(num_str)
+        return nums
+
+    original_nums = extract_numbers_with_percent(original_raw_text)
+    draft_text = " ".join([summary] + all_bullets)
+    draft_nums = extract_numbers_with_percent(draft_text)
+
+    return [
+        f"[NEEDS REVIEW] Unverified metric not found in original resume: '{num}'"
+        for num in draft_nums - original_nums
+    ]
 
 
 def _check_tone_repetitive(summary: str, experience: list[dict]) -> list[str]:
