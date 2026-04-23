@@ -27,7 +27,25 @@ class QualityReport:
 
 
 def _check_bullets_too_long(working_draft: dict) -> list[str]:
-    return []
+    """Trim bullets > BULLET_MAX_WORDS words. Mutates working_draft in place. Returns issues."""
+    issues: list[str] = []
+    for role in working_draft.get("experience", []) or []:
+        if not isinstance(role, dict):
+            continue
+        role_title = role.get("title", "Unknown Role")
+        bullets = role.get("bullets", [])
+        if not isinstance(bullets, list):
+            continue
+        for i, bullet in enumerate(bullets):
+            if not isinstance(bullet, str):
+                continue
+            words = bullet.split()
+            if len(words) > BULLET_MAX_WORDS:
+                role["bullets"][i] = " ".join(words[:BULLET_MAX_WORDS]) + "…"
+                issues.append(
+                    f"[AUTO-FIXED] Bullet trimmed to {BULLET_MAX_WORDS} words in role '{role_title}'"
+                )
+    return issues
 
 
 def _check_recent_exp_prioritized(working_draft: dict) -> list[str]:
@@ -53,6 +71,11 @@ def validate_quality(
     original: dict,
     jd_fields: dict | None = None,
 ) -> QualityReport:
+    """Run all quality checks on resume_draft. Returns QualityReport with auto-fixes applied.
+
+    passed=True only when no [NEEDS REVIEW] issues remain. Auto-fixed issues are
+    recorded in issues[] with [AUTO-FIXED] prefix and do not affect passed.
+    """
     working_draft = copy.deepcopy(resume_draft)
     summary: str = working_draft.get("summary", "") or ""
     experience: list[dict] = working_draft.get("experience", []) or []
@@ -70,6 +93,8 @@ def validate_quality(
     checks = [
         (_check_tone_repetitive, (summary, experience)),
         (_check_experience_exaggerated, (all_bullets, summary, original_raw_text)),
+        # NOTE: _check_bullets_too_long mutates working_draft in place — must run after
+        # read-only checks so all_bullets snapshot (used above) remains untruncated.
         (_check_bullets_too_long, (working_draft,)),
         (_check_recent_exp_prioritized, (working_draft,)),
         (_check_jd_keywords_present, (working_draft, jd_fields)),

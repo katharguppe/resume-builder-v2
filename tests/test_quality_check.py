@@ -1,5 +1,5 @@
 import copy
-from app.llm.quality_check import QualityReport, validate_quality
+from app.llm.quality_check import QualityReport, validate_quality, _check_bullets_too_long, BULLET_MAX_WORDS
 
 SAMPLE_DRAFT = {
     "candidate_name": "Jane Doe",
@@ -49,3 +49,56 @@ def test_validate_quality_does_not_mutate_input():
     original_draft = copy.deepcopy(SAMPLE_DRAFT)
     validate_quality(SAMPLE_DRAFT, SAMPLE_ORIGINAL)
     assert SAMPLE_DRAFT == original_draft
+
+
+def test_bullets_too_long_short_bullet_no_issue():
+    draft = copy.deepcopy(SAMPLE_DRAFT)
+    issues = _check_bullets_too_long(draft)
+    assert issues == []
+
+
+def test_bullets_too_long_exactly_30_words_no_issue():
+    draft = {
+        "experience": [
+            {"title": "Manager", "bullets": ["word " * 30]}
+        ]
+    }
+    issues = _check_bullets_too_long(draft)
+    assert issues == []
+
+
+def test_bullets_too_long_31_words_is_auto_fixed():
+    long_bullet = " ".join([f"word{i}" for i in range(31)])
+    draft = {
+        "experience": [
+            {"title": "Sales Manager", "bullets": [long_bullet]}
+        ]
+    }
+    issues = _check_bullets_too_long(draft)
+    assert len(issues) == 1
+    assert issues[0].startswith("[AUTO-FIXED]")
+    assert "Sales Manager" in issues[0]
+
+
+def test_bullets_too_long_mutates_working_draft():
+    long_bullet = " ".join([f"word{i}" for i in range(31)])
+    draft = {
+        "experience": [
+            {"title": "Manager", "bullets": [long_bullet]}
+        ]
+    }
+    _check_bullets_too_long(draft)
+    trimmed = draft["experience"][0]["bullets"][0]
+    assert len(trimmed.split()) <= BULLET_MAX_WORDS + 1  # +1 for "…" appended as one token
+    assert trimmed.endswith("…")
+
+
+def test_bullets_too_long_missing_experience_no_crash():
+    issues = _check_bullets_too_long({})
+    assert issues == []
+
+
+def test_bullets_too_long_non_string_bullet_no_crash():
+    draft = {"experience": [{"title": "Manager", "bullets": [None, 42]}]}
+    issues = _check_bullets_too_long(draft)
+    assert issues == []
