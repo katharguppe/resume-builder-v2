@@ -113,6 +113,11 @@ def rewrite_resume(resume_text: str, jd_text: str, best_practice: str, revision_
             result = json.loads(_strip_markdown_fences(response.content[0].text))
             draft = apply_variation_to_resume(result)
             report = validate_quality(draft, {"raw_text": resume_text})
+            if not report.passed:
+                logger.warning(
+                    "Quality check flagged issues in rewrite_resume: %s",
+                    report.issues,
+                )
             return report.fixed_draft
         except json.JSONDecodeError as e:
             logger.warning(f"rewrite_resume attempt {attempt}/{config.MAX_LLM_RETRIES} failed to parse JSON: {e}")
@@ -270,6 +275,11 @@ def rewrite_resume_deepseek(resume_text: str, jd_text: str, best_practice: str, 
             result = json.loads(_strip_markdown_fences(response.choices[0].message.content))
             draft = apply_variation_to_resume(result)
             report = validate_quality(draft, {"raw_text": resume_text})
+            if not report.passed:
+                logger.warning(
+                    "Quality check flagged issues in rewrite_resume_deepseek: %s",
+                    report.issues,
+                )
             return report.fixed_draft
         except json.JSONDecodeError as e:
             logger.warning(
