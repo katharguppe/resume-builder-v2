@@ -139,53 +139,89 @@ New in v2:
   - Store parsed resume_fields + jd_fields in DB linked to user session
   - app/ingestor/jd_extractor.py - extract JD fields using EXTRACT provider
 
-Before writing any code:
-  1. Read app/ingestor/extractor.py fully (headshot heuristic is critical - do not break)
-  2. Read app/state/db.py (new users/sessions tables from Phase 1)
-  3. Present plan
-  4. Wait for approval
+Implementation plan already written - DO NOT re-plan.
+Plan file: docs/superpowers/plans/2026-04-12-phase-02-upload-parse.md
+Scope resolved: YES Phase 2 includes LLM extract_fields call.
+Branch from: feature/phase-01-auth
+
+Load the plan and execute it using superpowers:executing-plans.
 '@
     }
 
     "phase-3" = @{
         model = $SONNET
-        label = "Phase 3 - ATS Score Engine (batch, in-process)"
+        label = "Phase 3 - ATS Score Engine (batch, in-process) - RESUME from Task 3"
         task  = "PHASE-03"
         prompt = @'
 Stack: Python 3.13, no LLM - pure Python scoring
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
-Task file: tasks/PHASE-03-ats-score-engine-batch.md
+Branch: feature/phase-02-upload-parse (144 tests passing)
+Plan file: docs/superpowers/plans/2026-04-12-phase-03-ats-score-engine.md
 
-PHASE 3: ATS Score Engine - batch, in-process, no LLM
+PHASE 3 RESUME SESSION - Tasks 1 and 2 are COMPLETE. Do NOT redo them.
 
-Scope: app/scoring/ only (new module)
+════════════════════════════════════════════════
+ALREADY DONE (do not re-implement):
+════════════════════════════════════════════════
+Pre-fixes committed (9d67daa):
+  - app/ui/pages/1_Setup.py: anthropic_api_key renamed + GEMINI_API_KEY field added
+  - app/state/models.py: ats_score_json: Optional[str] added to SubmissionRecord
+  - app/state/db.py: ats_score_json TEXT column + ALTER TABLE migration + whitelist
+  - tests/test_state.py: ats_score_json=None added to fixture
 
-What to build:
-  app/scoring/__init__.py
-  app/scoring/ats_scorer.py   - compute_ats_score(resume_fields, jd_fields) -> ATSScore
-  app/scoring/missing_info.py - detect_missing(resume_fields) -> List[MissingItem]
-  app/scoring/models.py       - ATSScore, MissingItem dataclasses
+Task 1 committed (a30fd9f):
+  - app/scoring/models.py: ATSScore + MissingItem dataclasses
+  - app/scoring/__init__.py: stub
+  - tests/test_scoring_models.py: 6 tests
 
-ATS score components (0-100):
-  keyword_match        (30%) - resume keywords vs JD required keywords
-  skills_coverage      (30%) - resume skills vs JD required skills
-  experience_clarity   (20%) - presence of: dates, roles, company names, achievements
-  structure_completeness(20%) - presence of: summary, education, certifications
+Task 2 committed (e811327):
+  - app/scoring/ats_scorer.py: _tokenize, _score_keyword_match, _normalize_skill (REAL)
+    _score_skills_coverage, _score_experience_clarity, _score_structure_completeness,
+    compute_ats_score are STUBS (return 15/0 - to be replaced in Tasks 3-4)
+  - tests/test_ats_scorer.py: _make_jd + _make_resume_fields helpers + 7 keyword_match tests
 
-Missing info severity:
-  HIGH   - missing dates, missing current role designation
-  MEDIUM - no measurable achievements, no company description
-  LOW    - no certifications, no LinkedIn/GitHub
+════════════════════════════════════════════════
+STEP 1 - APPLY THESE 4 FIXES FIRST (from code review of Task 2):
+════════════════════════════════════════════════
+In app/scoring/ats_scorer.py:
 
-Rules:
-  - NO LLM calls in this module - pure Python string matching + heuristics
-  - Score must complete in <1s
-  - Use skill: ats-scorer for each component
+Fix 1 - non-string guard at top of _tokenize:
+  if not isinstance(text, str):
+      return set()
 
-Before writing any code:
-  1. Read app/ingestor/extractor.py (understand the field structure from v1)
-  2. Present scoring algorithm design
-  3. Wait for approval
+Fix 2 - non-string guard in _score_keyword_match responsibilities loop:
+  for resp in responsibilities:
+      if isinstance(resp, str):
+          jd_tokens.update(_tokenize(resp))
+
+Fix 3 - replace _normalize_skill with alias-aware version (C++ -> cplusplus, split on /,  NOT +):
+  _SKILL_ALIASES = {
+      "c++": "cplusplus", "c#": "csharp", "f#": "fsharp",
+      ".net": "dotnet", "node.js": "nodejs", "vue.js": "vuejs",
+      "react.js": "reactjs", "next.js": "nextjs",
+  }
+  def _normalize_skill(skill: str) -> List[str]:
+      lowered = skill.lower().strip()
+      for src, dst in _SKILL_ALIASES.items():
+          lowered = lowered.replace(src, dst)
+      parts = re.split(r"[/,]", lowered)
+      return [re.sub(r"[^a-z0-9\s]", "", p).strip() for p in parts if p.strip()]
+
+Fix 4 - tighten fallback test in tests/test_ats_scorer.py:
+  test_keyword_match_fallback_empty_responsibilities:
+    assert 0 < score <= 15  (was: assert score <= 15)
+
+Run: python -m pytest tests/ -q   -> must still show 144 passed
+Commit: [PHASE-03] fix: non-string guard in tokenize; C++ alias in normalize_skill; tighten fallback test
+
+════════════════════════════════════════════════
+STEP 2 - CONTINUE with Tasks 3-7 from the plan:
+════════════════════════════════════════════════
+Load plan: docs/superpowers/plans/2026-04-12-phase-03-ats-score-engine.md
+Execute Tasks 3, 4, 5, 6, 7 using superpowers:subagent-driven-development.
+Start at Task 3 (skills_coverage). Do NOT re-run Tasks 1 or 2.
+
+Use python -m pytest (not bare pytest) for all test runs.
 '@
     }
 
@@ -196,7 +232,11 @@ Before writing any code:
         prompt = @'
 Stack: Python 3.13, Streamlit, SQLite, reportlab
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
-Task file: tasks/PHASE-04-resume-review-page.md
+Branch: feature/phase-02-upload-parse (183 tests passing)
+
+PHASE 3 IS COMPLETE. Do NOT redo it.
+  app/scoring/ is fully built: ats_scorer, missing_info, models, _patterns, __init__
+  compute_ats_score() and detect_missing() are live and tested.
 
 PHASE 4: Resume review page - read-only output + accept/reject controls
 
@@ -204,8 +244,8 @@ Scope: app/ui/pages/3_Review.py + app/llm/ (trigger rewrite for first generation
 
 What to build:
   app/ui/pages/3_Review.py - candidate review page:
-    - Show ATS score breakdown (from Phase 3)
-    - Show missing info panel (severity ranked)
+    - Show ATS score breakdown (from Phase 3 compute_ats_score)
+    - Show missing info panel (from Phase 3 detect_missing, severity ranked)
     - Show AI-generated resume (PDF preview or structured text)
     - Show JD alignment highlights
     - Controls: [Accept Draft] [Request Revision] [Back]
@@ -222,11 +262,13 @@ Rules:
   - No editing on this page - read-only
   - Revision button only shows if revisions_remaining > 0 (max 3)
   - Status machine: PROCESSING -> REVIEW_READY
+  - Use python -m pytest (not bare pytest) for all test runs
 
 Before writing any code:
-  1. Read app/composer/pdf_writer.py + app/llm/finetuner.py fully
-  2. Present provider.py design (Gemini Flash + DeepSeek V3 adapters)
-  3. Wait for approval
+  1. Read /memory to load Phase 3 context
+  2. Read app/composer/pdf_writer.py + app/llm/finetuner.py fully
+  3. Present provider.py design (Gemini Flash + DeepSeek V3 adapters)
+  4. Wait for approval
 '@
     }
 
@@ -237,35 +279,62 @@ Before writing any code:
         prompt = @'
 Stack: Python 3.13, Streamlit, SQLite, app/llm/
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
-Task file: tasks/PHASE-05-revision-request-up-to-3x.md
+Branch: feature/phase-02-upload-parse (204 tests passing)
+
+PHASE 4 IS COMPLETE. Do NOT redo it.
+  app/ui/pages/3_Review.py is fully built: auth guard, pipeline trigger,
+    two-column layout (ATS score + missing info left, resume text + JD alignment right),
+    action bar (Back / Request Revision / Accept Draft).
+  _run_rewrite_pipeline() is live and tested (tests/test_review_pipeline.py, 5 tests).
+  Provider routing is live: LLM_EXTRACT_PROVIDER (claude|gemini), LLM_REWRITE_PROVIDER (claude|deepseek).
+  MAX_REVISIONS = 3 constant defined in 3_Review.py.
+  Status machine in place: PROCESSING -> REVIEW_READY -> REVISION_REQUESTED / ACCEPTED.
 
 PHASE 5: Revision request - re-run LLM pipeline, max 3 revisions per session
 
-Scope: app/ui/pages/4_Revise.py + app/state/ (revision counter)
+Scope: app/ui/pages/4_Revise.py + app/llm/ (revision_hint support)
 
 What to build:
   app/ui/pages/4_Revise.py  - revision request page:
-    - Show current draft
-    - Text input: "What to improve?" (optional hint to LLM)
-    - Show revisions_remaining count (e.g. "2 revisions left")
-    - [Submit Revision Request] button
-    - Status: REVISION_REQUESTED -> PROCESSING -> REVIEW_READY
+    - Auth guard (same pattern as 3_Review.py _require_auth)
+    - Load submission (current_submission_id from session_state)
+    - Guard: only show if status == REVISION_REQUESTED
+    - Show current AI draft (read from llm_output_json)
+    - Text area: "What would you like to improve?" (optional hint to LLM)
+    - Show revisions_remaining = MAX_REVISIONS - revision_count
+    - [Submit Revision] button:
+        set status PROCESSING, re-run _run_rewrite_pipeline (with hint), st.rerun()
+    - After re-run: redirect to 3_Review.py
 
-  app/state/db.py  - add: revisions_used column, revisions_remaining computed
-  app/state/models.py - add REVISION_REQUESTED, REVISION_EXHAUSTED to status enum
-  app/llm/finetuner.py - accept optional revision_hint parameter
+  app/llm/provider.py + finetuner.py:
+    - rewrite_resume() and adapters accept optional revision_hint: str = ""
+    - If hint provided: append to prompt ("Candidate feedback: {hint}")
+    - Claude and DeepSeek adapters both updated
+
+  REVISION_EXHAUSTED status:
+    - If revision_count >= MAX_REVISIONS after re-run: set REVISION_EXHAUSTED
+    - 4_Revise.py shows [Accept Anyway] only when REVISION_EXHAUSTED
+
+  MAX_REVISIONS = 3 is already defined in app/ui/pages/3_Review.py.
+  Import or redefine it in 4_Revise.py (do NOT create a shared constants file
+  unless the plan calls for it).
 
 Rules:
-  - Hard cap at 3 revisions (enforced DB-side, not just UI-side)
-  - Revision hint is optional - LLM uses it only if provided
-  - After 3rd revision: show [Accept Anyway] only, no more revision button
-  - Status machine: REVIEW_READY -> REVISION_REQUESTED -> REVIEW_READY (up to 3x)
-  -                 REVIEW_READY -> REVISION_EXHAUSTED (after 3rd)
+  - revision_count is already in SubmissionRecord and DB (from Phase 2/4)
+  - Do NOT add a revisions_used column - revision_count is already tracking this
+  - REVISION_REQUESTED and REVISION_EXHAUSTED are already in SubmissionStatus enum
+    (verify before adding - check app/state/models.py)
+  - Hard cap enforced: button hidden + status set to REVISION_EXHAUSTED at limit
+  - Revision hint is optional - LLM uses it only if non-empty
+  - Use python -m pytest (not bare pytest) for all test runs
 
 Before writing any code:
-  1. Read app/state/models.py + app/state/db.py
-  2. Present revision counter schema + status transitions
-  3. Wait for approval
+  1. Read /memory to load Phase 4 context
+  2. Read app/state/models.py (check SubmissionStatus enum values)
+  3. Read app/ui/pages/3_Review.py (understand _require_auth, _run_rewrite_pipeline patterns to reuse)
+  4. Read app/llm/finetuner.py + provider.py (understand current rewrite_resume signature)
+  5. Present plan for revision_hint threading + 4_Revise.py page structure
+  6. Wait for approval
 '@
     }
 
@@ -285,7 +354,7 @@ Scope: app/scoring/missing_info.py (extend) + UI panel component
 What to build/extend:
   app/scoring/missing_info.py - extend with:
     - importance_level: HIGH | MEDIUM | LOW
-    - actionable message per missing item (e.g. "Add exact dates for each role")
+    - actionable message per missing item (e.g. 'Add exact dates for each role')
     - group by section (Experience / Education / Skills / Summary)
 
   app/ui/components/missing_panel.py - Streamlit component:
@@ -313,7 +382,16 @@ Before writing any code:
         prompt = @'
 Stack: Python 3.13, Streamlit, app/llm/ (EXTRACT provider)
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
+Branch: feature/phase-02-upload-parse (230 tests passing)
 Task file: tasks/PHASE-07-skills-section-builder.md
+
+PHASE 6 IS COMPLETE. Do NOT redo it.
+  app/scoring/missing_info.py: section field added, 6 items with sections assigned.
+  app/ui/components/missing_panel.py: severity-ranked collapsible panel, Focus button,
+    highlight_section session state, key_prefix support.
+  3_Review.py: panel wired in, _render_section_highlight callouts on all 5 sections.
+  4_Revise.py: missing panel shown above revision form.
+  230 tests passing (baseline was 214 + 16 new).
 
 PHASE 7: Skills Section Builder - grouped suggest + edit
 
@@ -323,66 +401,49 @@ What to build:
   app/skills/__init__.py
   app/skills/grouper.py  - group_skills(raw_skills: List[str]) -> SkillGroups
                            Groups: Core | Tools | Functional | Domain
-  app/skills/suggester.py - suggest_skills(jd_fields, resume_fields) -> suggestions
+  app/skills/suggester.py - suggest_skills(jd_fields, resume_fields) -> List[str]
                             Uses EXTRACT provider (Gemini Flash) for JD-based suggestions
 
   app/ui/pages/5_Skills.py:
-    - Show current skills grouped
-    - Show JD-suggested missing skills (highlighted)
+    - Show current skills grouped (from llm_output_json skills list)
+    - Show JD-suggested missing skills (highlighted, from suggester)
     - Candidate can: add / remove / reclassify skills
-    - [Save Skills] updates session in DB
+    - [Save Skills] persists updated skills list to submission in DB
 
 Rules:
   - Suggestions are hints, not auto-additions - candidate controls final list
-  - Skills section in PDF composer is updated from DB, not re-run from scratch
+  - Skills update stored in submission record (llm_output_json skills key)
   - Keep grouper logic simple: keyword matching to known group lists first, LLM fallback
+  - Use python -m pytest (not bare pytest) for all test runs
 
 Before writing any code:
   1. Read app/llm/finetuner.py (understand extract_fields output structure)
   2. Read app/composer/pdf_writer.py (skills section layout)
-  3. Present grouper design
+  3. Present grouper design + group keyword lists
   4. Wait for approval
 '@
     }
 
     "phase-8" = @{
         model = $SONNET
-        label = "Phase 8 - Personalization Logic"
+        label = "Phase 8 - Personalization Logic [DONE - 329 tests]"
         task  = "PHASE-08"
         prompt = @'
-Stack: Python 3.13, app/llm/prompt_builder.py (extend from v1)
+Stack: Python 3.13, app/llm/prompt_builder.py
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
-Task file: tasks/PHASE-08-personalization-logic.md
+Branch: feature/phase-02-upload-parse
 
-PHASE 8: Experience/function personalization logic
+PHASE 8 IS COMPLETE. Do NOT re-implement anything.
 
-Scope: app/llm/prompt_builder.py only
+All 6 tasks done (329 tests passing). Key commits:
+  d39ebaf + 9a0f1d5 : _sum_experience_months (year span + explicit years + cap)
+  5e063ce           : _keyword_experience_level + detect_experience_level
+  748e95e           : detect_function_type (keyword count scoring, tie -> general)
+  3cb1bde           : _build_personalization_block (100-verb bank, 10 tone variants)
+  ffa6a40           : build_finetuning_prompt extended (experience_level, function_type params)
+  cc90f0e           : task file marked COMPLETE
 
-Experience levels (detect from resume, pass to prompt):
-  fresher  (0-1y)  -> focus: education, projects, learning agility
-  early    (1-4y)  -> focus: execution, delivery, tools
-  mid      (4-8y)  -> focus: ownership, results, cross-functional
-  senior   (8y+)   -> focus: leadership, scale, strategy
-
-Function types (detect from JD, pass to prompt):
-  technical    -> precision, tools, architecture
-  sales        -> targets, pipeline, conversion rates
-  operations   -> process, efficiency, SLAs
-  academic     -> curriculum, research, outcomes
-  general      -> balanced across all areas
-
-Rules from PRD §6:
-  - No over-positioning - reflect actual level
-  - Tone variation - no repeated cliche phrases across candidates
-  - Bullet format: Action + Context + Outcome
-  - Recent role: 6-8 bullets | Previous: 4-6 | Older: 2-4
-
-Use skill: personalization for each level/function combination.
-
-Before writing any code:
-  1. Read current app/llm/prompt_builder.py fully
-  2. Present which sections need extending vs replacing
-  3. Wait for approval
+If you are here for Phase 9, launch: .\jobos-v2-sessions.ps1 -Session phase-9
 '@
     }
 
@@ -393,84 +454,90 @@ Before writing any code:
         prompt = @'
 Stack: Python 3.13, app/llm/ (post-processing layer)
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
+Branch: feature/phase-02-upload-parse (329 tests passing)
 Task file: tasks/PHASE-09-language-variation-engine.md
+
+PHASE 8 IS COMPLETE. Do NOT redo it.
+  app/llm/prompt_builder.py extended with:
+    detect_experience_level(resume_text) -> str  (fresher/early/mid/senior)
+    detect_function_type(jd_text) -> str         (technical/sales/operations/academic/general)
+    _build_personalization_block(level, type) -> str  (10 verbs from 100-verb bank, 1 of 10 tone variants)
+  build_finetuning_prompt() extended with optional experience_level + function_type params.
+  54 tests in test_prompt_builder.py. 329 total passing.
 
 PHASE 9: Language Variation Engine - anti-repetition phrase rotation
 
-Scope: app/llm/variation_engine.py (new)
+Scope: app/llm/variation_engine.py (new file only)
 
 What to build:
   app/llm/variation_engine.py:
-    BANNED_PHRASES    - list of cliche phrases to detect and replace
-    SYNONYM_GROUPS    - dict of phrase -> list of alternatives
+    BANNED_PHRASES    - list of cliche phrases to detect and replace (20+ entries)
+    SYNONYM_GROUPS    - dict[str, list[str]] phrase -> alternatives (10+ groups)
     apply_variation(text: str) -> str
-      - Detect any BANNED_PHRASES in text
+      - Detect any BANNED_PHRASES in text (case-insensitive)
       - Replace with a randomly selected alternative from SYNONYM_GROUPS
-      - Log replacements for auditability
+      - If no replacement exists: leave original (do not force bad phrasing)
+      - Return modified text
 
-  Integration: call apply_variation() on rewrite output BEFORE quality check
+  Integration: call apply_variation() on rewrite output BEFORE quality check (Phase 11)
+  tests/test_variation_engine.py: one test per SYNONYM_GROUP minimum
 
-Banned phrase examples (from PRD §10.3):
-  "cross-functional collaboration" -> rotate with alternatives
-  "transforming vision into reality" -> rotate
-  "mission-driven professional" -> rotate
-  "results-oriented" -> rotate
+Banned phrase examples:
+  "cross-functional collaboration", "results-oriented", "passionate about",
+  "proven track record", "dynamic professional", "transforming vision into reality",
+  "mission-driven", "team player", "go-getter", "synergy", "leverage" (as filler),
+  "detail-oriented", "self-starter", "thought leader", "moved the needle",
+  "wear many hats", "out of the box", "value-add", "best-in-class", "world-class"
 
 Rules:
-  - NEVER change factual content - only rephrase
+  - NEVER change factual content - only rephrase cliches
   - Replacements must be grammatically correct in context
-  - If no suitable replacement exists, leave original (do not force bad phrasing)
-  - Unit-testable: each SYNONYM_GROUP must have a test
-
-Use skill: variation-engine
+  - Pure Python stdlib only - no LLM call, no new dependencies
+  - Unit-testable: each SYNONYM_GROUP must have at least one test
+  - Use python -m pytest (not bare pytest) for all test runs
 
 Before writing any code:
-  1. Present initial BANNED_PHRASES list (20+ entries)
-  2. Present initial SYNONYM_GROUPS (10+ groups)
-  3. Wait for approval
+  1. Read CLAUDE.md (orient on Phase 9 scope: app/llm/variation_engine.py only)
+  2. Read tasks/PHASE-09-language-variation-engine.md
+  3. Use superpowers:brainstorming to explore the design
+  4. Then use superpowers:writing-plans to produce an implementation plan
+  5. Present the plan. Wait for "proceed" or "approved" before writing code.
 '@
     }
 
     "phase-10" = @{
         model = $SONNET
-        label = "Phase 10 - Payment Gate + Locked Download"
+        label = "Phase 10 - Payment Gate + Locked Download [DONE - 378 tests]"
         task  = "PHASE-10"
         prompt = @'
-Stack: Python 3.13, Streamlit, Razorpay (default) or Stripe, SQLite
+Stack: Python 3.13, Streamlit, Razorpay, SQLite
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
-Task file: tasks/PHASE-10-payment-gate-locked-download.md
+Branch: feature/phase-02-upload-parse
 
-PHASE 10: Payment gate + locked PDF download
+PHASE 10 IS COMPLETE. Do NOT re-implement anything.
 
-Scope: app/payment/ (new) + app/ui/pages/6_Download.py
+378 tests passing. Key commits:
+  4c7224d : razorpay>=1.3.0 added to requirements.txt
+  855838c : payment config fields (PAYMENT_PROVIDER, RAZORPAY_KEY_*, APP_BASE_URL)
+  5a12250 : payment_link_id + payment_id columns in SubmissionsDB + SubmissionRecord
+  42de9e9 : PaymentProvider ABC + OrderResult dataclass + factory
+  1622d18 : RazorpayAdapter (Payment Links create_order + HMAC verify_payment)
+  469b9c7 : fix: don't log razorpay_signature in verify_payment failure path
+  a37807a : StripeAdapter stub (NotImplementedError)
+  f5ad73e : watermark_pdf_bytes (PyMuPDF, in-memory, source untouched)
+  878673b : _download_helpers (build_callback_url, has_razorpay_callback, get_price_paise)
+  500f47f : 6_Download.py — payment gate, watermark, Razorpay callback verify
+  16a2d31 : fix: prevent duplicate payment link on PAYMENT_PENDING re-entry
+  efb104d : checkpoint: payment gate complete
+  931d28e : docs: design spec + implementation plan committed
 
-What to build:
-  app/payment/__init__.py
-  app/payment/provider.py  - PaymentProvider adapter
-                             create_order(amount, currency) -> order_id
-                             verify_payment(payment_id, order_id, signature) -> bool
-                             Supports: PAYMENT_PROVIDER=razorpay | stripe
+New module: app/payment/ (provider, razorpay_adapter, stripe_adapter, watermark)
+New page  : app/ui/pages/6_Download.py
+New helper: app/ui/pages/_download_helpers.py
+DB        : payment_link_id + payment_id columns in submissions table
+25 new tests in tests/test_payment.py
 
-  app/ui/pages/6_Download.py:
-    - Show resume preview (watermarked if unpaid)
-    - Show price (RESUME_DOWNLOAD_PRICE_INR from .env)
-    - [Pay & Download] button -> Razorpay/Stripe checkout
-    - On payment_confirmed: unlock and serve PDF
-    - On failure: show error, allow retry
-
-  app/state/db.py - add: payment_status, payment_id, payment_order_id columns
-  app/state/models.py - add PAYMENT_PENDING, PAYMENT_CONFIRMED, DOWNLOAD_READY, DOWNLOADED
-
-Rules:
-  - Download is LOCKED until payment_confirmed = true in DB
-  - Verify payment server-side (signature check) - never trust client
-  - Watermark PDF before payment: semi-transparent "PREVIEW" overlay
-  - After payment: serve clean PDF, log DOWNLOADED status
-
-Before writing any code:
-  1. Present payment provider adapter design
-  2. Confirm: Razorpay for India market (default)?
-  3. Wait for approval
+If you are here for Phase 11, launch: .\jobos-v2-sessions.ps1 -Session phase-11
 '@
     }
 
@@ -481,16 +548,26 @@ Before writing any code:
         prompt = @'
 Stack: Python 3.13, app/llm/ (REWRITE provider)
 Project: resume-builder-v2 (JobOS Resume Builder v2.0)
+Branch: feature/phase-02-upload-parse (378 tests passing)
 Task file: tasks/PHASE-11-quality-check-layer.md
+
+PHASE 10 IS COMPLETE. Do NOT redo it.
+  app/payment/ module: RazorpayAdapter (Payment Links + HMAC verify), StripeAdapter stub,
+    watermark_pdf_bytes (PyMuPDF in-memory), PaymentProvider ABC + factory.
+  app/ui/pages/6_Download.py: payment gate page, watermarked preview, callback verify,
+    clean PDF served only after PAYMENT_CONFIRMED. Duplicate link guard on re-entry.
+  app/ui/pages/_download_helpers.py: build_callback_url, has_razorpay_callback, get_price_paise.
+  DB: payment_link_id + payment_id columns in submissions table.
+  25 new tests in tests/test_payment.py. 378 total passing.
 
 PHASE 11: Quality Check Layer - pre-output validation before candidate sees resume
 
-Scope: app/llm/quality_check.py (new)
+Scope: app/llm/quality_check.py (new file only)
 
 What to build:
   app/llm/quality_check.py:
     validate_quality(resume_draft: dict, original: dict) -> QualityReport
-      Checks (from PRD §10.10):
+      Checks:
         1. tone_repetitive      - same phrases across sections?
         2. experience_exaggerated - claims beyond original?
         3. bullets_too_long     - bullets > 30 words?
@@ -508,11 +585,14 @@ Rules:
   - String-based checks (bullet length, section order) are pure Python - no LLM
   - Must complete in < 5s total
   - All checks must be unit-testable with mock resume data
+  - Use python -m pytest (not bare pytest) for all test runs
 
 Before writing any code:
-  1. Read app/llm/variation_engine.py (Phase 9 output)
-  2. Present quality check algorithm design
-  3. Wait for approval
+  1. Read app/llm/variation_engine.py (Phase 9 output - apply_variation_to_resume)
+  2. Read app/llm/finetuner.py (understand where to wire quality check in pipeline)
+  3. Use superpowers:brainstorming to explore the design
+  4. Then use superpowers:writing-plans to produce an implementation plan
+  5. Present the plan. Wait for approval before writing code.
 '@
     }
 
@@ -641,4 +721,5 @@ if ($Session -ne "debug") {
     $s.prompt | Set-Content $tmpPrompt -Encoding UTF8
 }
 
-claude --model $s.model --print (Get-Content $tmpPrompt -Raw)
+$promptContent = Get-Content $tmpPrompt -Raw
+claude --model $s.model $promptContent
