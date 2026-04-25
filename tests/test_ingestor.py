@@ -307,3 +307,36 @@ def test_extract_photo_no_photo_when_only_fullpage_background(mock_pdfplumber_op
 
     result = extract_text_and_photo(pdf_path)
     assert result["photo_bytes"] is None
+
+
+# ── Phase 2: JD extractor ─────────────────────────────────────────────────────
+
+from app.ingestor.jd_extractor import extract_jd_fields
+
+
+def test_extract_jd_fields_returns_dict():
+    expected = {
+        "job_title": "Backend Engineer",
+        "company": "ACME",
+        "required_skills": ["Python", "PostgreSQL"],
+        "preferred_skills": ["Docker"],
+        "experience_required": "3+ years",
+        "education_required": "BS Computer Science",
+        "key_responsibilities": ["Design APIs", "Write tests"],
+    }
+    with patch("app.ingestor.jd_extractor.provider.extract_jd_fields", return_value=expected):
+        result = extract_jd_fields("We need a Backend Engineer at ACME...")
+    assert result["job_title"] == "Backend Engineer"
+    assert "Python" in result["required_skills"]
+
+
+def test_extract_jd_fields_empty_text():
+    expected = {
+        "job_title": "", "company": "", "required_skills": [],
+        "preferred_skills": [], "experience_required": "",
+        "education_required": "", "key_responsibilities": [],
+    }
+    with patch("app.ingestor.jd_extractor.provider.extract_jd_fields", return_value=expected):
+        result = extract_jd_fields("")
+    assert result["required_skills"] == []
+    assert result["job_title"] == ""
