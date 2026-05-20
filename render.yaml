@@ -5,7 +5,6 @@ services:
     dockerfilePath: ./docker/Dockerfile
     dockerContext: .
     plan: standard          # LibreOffice needs ~1 GB RAM; free tier (512 MB) will OOM
-    port: 8501
     healthCheckPath: /_stcore/health
 
     disk:
@@ -88,6 +87,8 @@ services:
         value: /app/data/resume_builder.db
 
       # ── App ────────────────────────────────────────────────────────────────────
+      - key: PORT
+        value: 8501
       - key: LOG_LEVEL
         value: INFO
       - key: MAX_REVISIONS
