@@ -13,6 +13,8 @@ RUN useradd -m -u 1000 appuser
 
 WORKDIR /app
 
+ENV PYTHONPATH=/app
+
 # Copy requirements first for better layer caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
