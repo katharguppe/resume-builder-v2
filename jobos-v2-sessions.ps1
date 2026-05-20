@@ -12,7 +12,7 @@ param(
         "list",
         "phase-1","phase-2","phase-3","phase-4","phase-5","phase-6",
         "phase-7","phase-8","phase-9","phase-10","phase-11","phase-12",
-        "debug"
+        "debug","beta"
     )]
     [string]$Session
 )
@@ -639,6 +639,228 @@ Before writing any code:
 '@
     }
 
+    "beta" = @{
+        model = $SONNET
+        label = "Beta - Render deploy + end-user manual (all 12 phases done)"
+        task  = "BETA"
+        prompt = @'
+Stack: Python 3.13, Streamlit, Docker, Render.com, Razorpay, Anthropic Claude Sonnet
+Project: resume-builder-v2 (JobOS Resume Builder v2.0)
+Branch: feature/phase-02-upload-parse
+Commit: d3e25e0 - render.yaml committed, all 12 phases complete
+
+════════════════════════════════════════════════════════════
+BETA SESSION - Render Deployment + End-User Manual
+════════════════════════════════════════════════════════════
+
+All 12 phases are COMPLETE. Do NOT re-implement anything.
+This session has 5 ordered steps. Do them in order. Gate before each step.
+
+CONTEXT (already done before this session):
+  - render.yaml: created at repo root (Docker, standard plan, 1 GB disk at /app/data)
+  - requirements.txt: google-generativeai + openai added
+  - docker/Dockerfile: /app/data/input + /app/data/output dirs created
+  - docker/docker-compose.yml: healthcheck fixed (python urllib, not curl)
+  - .env.example: LLM_REWRITE_PROVIDER=claude (Sonnet 4.6 as primary rewrite)
+  - LLM_EXTRACT_PROVIDER=gemini (Gemini Flash 2.0 as primary extract)
+  - DeepSeek documented as alternative rewrite (switch via env var)
+  - PAYMENT_PROVIDER=razorpay (keys set in Render dashboard, never in code)
+
+════════════════════════════════════════════════════════════
+STEP 1 - PRE-DEPLOY VERIFICATION (read files, fix if broken)
+════════════════════════════════════════════════════════════
+
+Check these 3 things. Fix any that are broken. Gate before Step 2.
+
+1a. DB_PATH env var:
+  Read app/state/db.py. Find where the SQLite DB file path is set.
+  It MUST read from os.getenv("DB_PATH", "resume_builder.db") - not a hardcoded Windows path.
+  If hardcoded: fix it to use the env var.
+
+1b. SOURCE_FOLDER / DEST_FOLDER env vars:
+  Search the codebase for SOURCE_FOLDER and DEST_FOLDER usage.
+  They MUST be read via os.getenv() wherever folder paths are used.
+  If any file uses a hardcoded path (e.g. C:\Users\...): fix it to use the env var.
+
+1c. Streamlit entrypoint:
+  Confirm app/ui/main.py exists and is a valid Streamlit app entry point.
+  The Dockerfile CMD runs: streamlit run app/ui/main.py
+  If the file is missing or points to a different path: fix the Dockerfile CMD.
+
+After fixes (if any): run python -m pytest -q to confirm tests still pass.
+Commit any fixes as: [BETA] fix: env var paths + entrypoint verified
+
+Present verification results. Wait for approval before Step 2.
+
+════════════════════════════════════════════════════════════
+STEP 2 - RENDER DEPLOYMENT WALKTHROUGH
+════════════════════════════════════════════════════════════
+
+Do NOT deploy automatically. Walk the user through it interactively.
+
+Tell the user exactly what to do, one sub-step at a time:
+
+2a. Push branch to GitHub (if not already):
+    git push origin feature/phase-02-upload-parse
+
+2b. Connect to Render:
+    - Go to https://dashboard.render.com
+    - New > Web Service > Connect GitHub repo > select resume-builder-v2
+    - Render auto-detects render.yaml - confirm "Use render.yaml" is selected
+    - Click "Create Web Service"
+
+2c. Set secrets in Render dashboard > Environment tab:
+    Tell the user to set these (one at a time, paste values from their .env):
+      ANTHROPIC_API_KEY      <- their Claude API key
+      GEMINI_API_KEY         <- their Gemini API key
+      RAZORPAY_KEY_ID        <- their Razorpay key ID
+      RAZORPAY_KEY_SECRET    <- their Razorpay key secret
+      APP_BASE_URL           <- https://<service-name>.onrender.com  (get from Render after deploy)
+      SMTP_USER              <- Gmail address for OTP delivery
+      SMTP_PASSWORD_ENCRYPTED <- encrypted password (from crypto.py)
+      ENCRYPTION_KEY         <- Fernet key from their .env
+      SESSION_SECRET         <- random 32-char string
+
+2d. First build: warn the user it takes 8-10 minutes (LibreOffice apt install).
+    Tell them to watch the Render build logs.
+
+2e. After deploy: confirm the health check URL works:
+    https://<service-name>.onrender.com/_stcore/health  should return {"status":"ok"}
+
+Wait for user to confirm deploy is live before Step 3.
+
+════════════════════════════════════════════════════════════
+STEP 3 - SMOKE TEST CHECKLIST
+════════════════════════════════════════════════════════════
+
+Walk the user through this live smoke test on the Render URL.
+Check each one off as they confirm it works.
+
+  [ ] OTP login: enter email -> receive OTP -> login successful
+  [ ] Upload resume (PDF) -> parsed correctly
+  [ ] Paste JD text -> ATS score appears
+  [ ] AI rewrite generated (Claude Sonnet) -> review page shows draft
+  [ ] Missing info panel shows severity items
+  [ ] Request revision -> revision count decrements
+  [ ] Skills builder page loads
+  [ ] Download page shows watermarked PDF
+  [ ] Razorpay payment link fires -> payment page opens
+  [ ] After payment: clean PDF available for download
+
+If any check fails: diagnose and fix before Step 4.
+Do not write USER_MANUAL.md until smoke test passes.
+
+════════════════════════════════════════════════════════════
+STEP 4 - WRITE END-USER MANUAL
+════════════════════════════════════════════════════════════
+
+Write USER_MANUAL.md at the project root.
+
+IMPORTANT RULES for the manual:
+  - Plain English. Non-tech audience (Sales, HR, Finance, Teachers, Chefs).
+  - NO personal API keys of the owner in the manual.
+  - Users must set up their OWN free-tier API keys.
+  - The beta URL is provided. OTP login = user's own email (no shared credentials).
+  - Tone: warm, step-by-step, no jargon.
+
+Manual structure:
+
+# JobOS Resume Builder - Beta User Guide
+
+## What This Tool Does
+  (2-3 sentences: AI-powered resume rewriter tailored to a specific job description)
+
+## Before You Start - Get Your Own API Keys
+  These are free. You need both:
+
+  ### Anthropic API Key (for AI rewriting)
+  Step-by-step: go to console.anthropic.com -> Sign up -> API Keys -> Create Key
+  (Note: free tier has a usage limit - sufficient for beta testing)
+
+  ### Google Gemini API Key (for resume parsing)
+  Step-by-step: go to aistudio.google.com -> Get API Key -> Create API Key
+
+  ### Where to enter your keys
+  (Explain: the app owner will collect these from you and add them to the deployment.
+   You do NOT enter them in the UI. Contact [owner] with your keys before testing.)
+
+## Beta Access
+  Beta URL: [INSERT RENDER URL HERE - owner fills this in]
+  Login: Enter your own email address. You will receive a one-time password (OTP).
+  No account creation needed.
+
+## Step-by-Step: Using the App
+  Step 1: Login with OTP
+  Step 2: Upload your current resume (PDF or Word document)
+  Step 3: Paste or upload the job description you are applying for
+  Step 4: Wait ~10 seconds for AI analysis
+  Step 5: Review your rewritten resume + ATS score
+  Step 6: Request up to 3 revisions if needed
+  Step 7: Review and accept the final draft
+  Step 8: Pay INR 99 to unlock your polished PDF
+  Step 9: Download your resume
+
+## Payment
+  Amount: INR 99 per resume download
+  Method: Razorpay (UPI, cards, net banking)
+  Refunds: Contact the owner if there is a technical issue
+
+## What the AI Does NOT Do
+  - It does NOT invent facts or add jobs you did not have
+  - It rewrites tone, keywords, and structure only
+  - All factual content comes from your original resume
+
+## Known Beta Limitations
+  - First page load may take 30 seconds (Render free tier sleep)
+  - DOC files require Docker to be running (PDF upload recommended for beta)
+  - Max 3 revisions per session
+
+## Feedback
+  Please report bugs or suggestions to: [owner contact]
+
+After writing: present the file. Wait for approval before Step 5.
+
+════════════════════════════════════════════════════════════
+STEP 5 - UPDATE CLAUDE.md
+════════════════════════════════════════════════════════════
+
+Update CLAUDE.md §1 to mark all phases DONE and current phase as BETA:
+
+  ## 1. Current Phase: BETA - All 12 phases complete. Deployed on Render.
+  Branch: feature/phase-02-upload-parse.
+
+  Phases (Option B - No Live Editor):
+    1  -> Auth              [DONE]
+    2  -> Upload/Parse      [DONE]
+    3  -> ATS Score Engine  [DONE]
+    4  -> Review Page       [DONE]
+    5  -> Revision Request  [DONE]
+    6  -> Missing Info      [DONE]
+    7  -> Skills Builder    [DONE]
+    8  -> Personalization   [DONE]
+    9  -> Variation Engine  [DONE]
+    10 -> Payment Gate      [DONE]
+    11 -> Quality Check     [DONE]
+    12 -> Integration/E2E   [DONE]
+    BETA -> Deployed on Render. Beta testing in progress.
+
+Then commit everything:
+  git add USER_MANUAL.md CLAUDE.md
+  git commit -m "[BETA] docs: end-user manual + mark all phases done"
+  git push
+
+════════════════════════════════════════════════════════════
+COMPLETION
+════════════════════════════════════════════════════════════
+Report back:
+  - Render URL
+  - Smoke test results (all passed / issues found)
+  - USER_MANUAL.md written (yes/no)
+  - CLAUDE.md updated (yes/no)
+  - Any issues deferred
+'@
+    }
+
     "debug" = @{
         model = $SONNET
         label = "Debug - one error, one file, one session"
@@ -715,7 +937,7 @@ Write-Host ""
 
 # Write prompt to temp file - append completion protocol for all phase sessions
 $tmpPrompt = "$env:TEMP\jobos_v2_session_prompt.txt"
-if ($Session -ne "debug") {
+if ($Session -notin @("debug","beta")) {
     ($s.prompt + $completionProtocol) | Set-Content $tmpPrompt -Encoding UTF8
 } else {
     $s.prompt | Set-Content $tmpPrompt -Encoding UTF8
