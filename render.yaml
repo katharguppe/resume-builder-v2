@@ -81,6 +81,8 @@ services:
         value: /app/data/input
       - key: DEST_FOLDER
         value: /app/data/output
+      - key: OUTPUT_DIR
+        value: /app/data/output
       - key: DB_PATH
         value: /app/data/resume_builder.db
       - key: AUTH_DB_PATH
