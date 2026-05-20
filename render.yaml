@@ -1,0 +1,92 @@
+services:
+  - type: web
+    name: jobos-resume-builder
+    env: docker
+    dockerfilePath: ./docker/Dockerfile
+    dockerContext: .
+    plan: standard          # LibreOffice needs ~1 GB RAM; free tier (512 MB) will OOM
+    port: 8501
+    healthCheckPath: /_stcore/health
+
+    disk:
+      name: resume-data
+      mountPath: /app/data
+      sizeGB: 1
+
+    envVars:
+      # ── LLM Providers ──────────────────────────────────────────────────────────
+      - key: LLM_REWRITE_PROVIDER
+        value: claude                         # Anthropic Claude Sonnet (primary)
+      - key: LLM_EXTRACT_PROVIDER
+        value: gemini                         # Gemini Flash (primary extract)
+      - key: LLM_REWRITE_MODEL
+        value: claude-sonnet-4-6
+      - key: LLM_EXTRACT_MODEL
+        value: claude-haiku-4-5-20251001
+      - key: GEMINI_EXTRACT_MODEL
+        value: gemini-2.0-flash
+      - key: DEEPSEEK_REWRITE_MODEL
+        value: deepseek-chat
+      - key: MAX_LLM_RETRIES
+        value: 3
+      - key: BEST_PRACTICE_MAX_TOKENS
+        value: 3000
+
+      # Set these in the Render dashboard (Environment tab) — never commit secrets
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+
+      # ── Payment ────────────────────────────────────────────────────────────────
+      - key: PAYMENT_PROVIDER
+        value: razorpay
+      - key: RESUME_DOWNLOAD_PRICE_INR
+        value: 99
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+
+      # APP_BASE_URL must match your Render service URL (set in dashboard)
+      # e.g. https://jobos-resume-builder.onrender.com
+      - key: APP_BASE_URL
+        sync: false
+
+      # ── Email / OTP ────────────────────────────────────────────────────────────
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD_ENCRYPTED
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+
+      # ── Auth / Session ─────────────────────────────────────────────────────────
+      - key: SESSION_SECRET
+        sync: false
+      - key: OTP_EXPIRY_MINUTES
+        value: 10
+      - key: OTP_LENGTH
+        value: 6
+      - key: SESSION_EXPIRY_HOURS
+        value: 24
+
+      # ── Storage (persistent disk mounted at /app/data) ─────────────────────────
+      - key: SOURCE_FOLDER
+        value: /app/data/input
+      - key: DEST_FOLDER
+        value: /app/data/output
+      - key: DB_PATH
+        value: /app/data/resume_builder.db
+
+      # ── App ────────────────────────────────────────────────────────────────────
+      - key: LOG_LEVEL
+        value: INFO
+      - key: MAX_REVISIONS
+        value: 3
