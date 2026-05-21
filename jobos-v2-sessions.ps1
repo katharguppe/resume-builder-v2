@@ -861,6 +861,119 @@ Report back:
 '@
     }
 
+    "beta01" = @{
+        model = $SONNET
+        label = "Beta01 - client feedback triage + fixes (post-beta-smoke-test)"
+        task  = "BETA01"
+        prompt = @'
+Stack: Python 3.13, Streamlit, Docker, Render.com, Razorpay, Anthropic Claude Sonnet
+Project: resume-builder-v2 (JobOS Resume Builder v2.0)
+Branch: feature/phase-02-upload-parse
+Live URL: https://jobos-resume-builder.onrender.com
+
+════════════════════════════════════════════════════════════
+BETA01 SESSION - Client Feedback Triage + Fixes
+════════════════════════════════════════════════════════════
+
+MANDATORY FIRST STEP: Read /memory before doing ANYTHING else.
+The memory file has the exact current state of the deployment.
+Do NOT skip this. Do NOT assume state from prior conversation.
+Command: read C:\Users\K S S\.claude\projects\D--staging-resume-builder-v2\memory\MEMORY.md
+Then read any memory files flagged as relevant (especially project_beta_deploy.md).
+
+════════════════════════════════════════════════════════════
+STEP 1 - COMPLETE DEFERRED ITEMS (do these before touching feedback)
+════════════════════════════════════════════════════════════
+
+These were deferred from the beta session. Do them first. Gate before Step 2.
+
+1a. Billing cap on Anthropic console (if not yet done):
+  - Ask user: "Has the $5 spend limit been set on the Anthropic NIRS key?"
+  - If not: guide them to console.anthropic.com → Settings → Billing → Usage Limits → $5
+
+1b. APP_BASE_URL in Render dashboard (if not yet set):
+  - Ask user: "Has APP_BASE_URL been set in Render dashboard?"
+  - If not: guide them to dashboard.render.com → jobos-resume-builder → Environment
+  - Value: https://jobos-resume-builder.onrender.com
+  - This is required for Razorpay payment callbacks
+
+Confirm both are done. Gate before Step 2.
+
+════════════════════════════════════════════════════════════
+STEP 2 - CLIENT KEY SWAP (if client keys are ready)
+════════════════════════════════════════════════════════════
+
+The user may be swapping from the NIRS test keys to the client's own keys.
+Ask: "Are the client's Anthropic and Gemini API keys ready to swap in?"
+
+If yes — guide them through Render dashboard → Environment:
+  - Replace ANTHROPIC_API_KEY with client's key
+  - Replace GEMINI_API_KEY with client's key
+  - Trigger redeploy after saving
+  - Confirm redeploy is live before proceeding
+
+If no — skip this step and proceed to Step 3.
+
+════════════════════════════════════════════════════════════
+STEP 3 - TAKE CLIENT FEEDBACK
+════════════════════════════════════════════════════════════
+
+Ask the user to paste all feedback from the client beta test.
+Wait for the full list before doing anything.
+
+Once you have it, triage each item into one of three buckets:
+
+  BUG (breaks core flow)     - fix this session
+  UX (confusing but works)   - fix this session if simple, else defer
+  EXPECTED (by design)       - explain to user, no fix needed
+    Examples of EXPECTED:
+      - Watermarked PDF (payment gate working as designed)
+      - Payment button error (Razorpay keys not yet set)
+      - 30s cold start on first load (Render standard tier)
+
+Present the triage to the user. Wait for approval before fixing anything.
+
+════════════════════════════════════════════════════════════
+STEP 4 - FIX BUGS (one at a time, gate between each)
+════════════════════════════════════════════════════════════
+
+For each BUG or approved UX fix:
+  1. Read the relevant file(s) FULLY before touching them
+  2. State what is broken and what the fix is
+  3. Wait for approval
+  4. Apply fix
+  5. Run: python -m pytest -q (must stay green)
+  6. Commit: [BETA01] fix: <what changed>
+  7. Push to trigger Render redeploy
+  8. Confirm fix is live before moving to next bug
+
+Do NOT batch multiple fixes into one commit.
+Do NOT auto-commit. Gate between every fix.
+
+════════════════════════════════════════════════════════════
+STEP 5 - UPDATE MEMORY
+════════════════════════════════════════════════════════════
+
+After all fixes are done, update memory to reflect current state:
+  - Update project_beta_deploy.md with what was fixed and what remains
+  - Note any deferred items with reason
+  - Note the current env var status in Render (keys swapped or not)
+
+This is NOT optional. The next session depends on accurate memory.
+
+════════════════════════════════════════════════════════════
+COMPLETION REPORT
+════════════════════════════════════════════════════════════
+Report back:
+  - Billing cap: done / not done
+  - APP_BASE_URL: set / not set
+  - Client keys swapped: yes / no
+  - Bugs fixed: list each with commit hash
+  - Bugs deferred: list each with reason
+  - Memory updated: yes
+'@
+    }
+
     "debug" = @{
         model = $SONNET
         label = "Debug - one error, one file, one session"
@@ -937,7 +1050,7 @@ Write-Host ""
 
 # Write prompt to temp file - append completion protocol for all phase sessions
 $tmpPrompt = "$env:TEMP\jobos_v2_session_prompt.txt"
-if ($Session -notin @("debug","beta")) {
+if ($Session -notin @("debug","beta","beta01")) {
     ($s.prompt + $completionProtocol) | Set-Content $tmpPrompt -Encoding UTF8
 } else {
     $s.prompt | Set-Content $tmpPrompt -Encoding UTF8
