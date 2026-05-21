@@ -210,10 +210,21 @@ def main() -> None:
 
     sub_id = st.session_state.get("current_submission_id")
     if not sub_id:
-        st.error("No active submission found. Please upload your resume first.")
-        if st.button("Go to Upload"):
-            st.switch_page("pages/1_Upload.py")
-        return
+        all_subs = subs_db.get_submissions_by_user(_user_id)
+        _active = {
+            SubmissionStatus.PROCESSING.value, SubmissionStatus.REVIEW_READY.value,
+            SubmissionStatus.REVISION_REQUESTED.value, SubmissionStatus.REVISION_EXHAUSTED.value,
+            SubmissionStatus.ACCEPTED.value,
+        }
+        found = next((s for s in all_subs if s.status in _active), None)
+        if found:
+            sub_id = found.id
+            st.session_state["current_submission_id"] = sub_id
+        else:
+            st.error("No active submission found. Please upload your resume first.")
+            if st.button("Go to Upload"):
+                st.switch_page("pages/1_Upload.py")
+            return
 
     submission = subs_db.get_submission(int(sub_id))
     if submission is None:
