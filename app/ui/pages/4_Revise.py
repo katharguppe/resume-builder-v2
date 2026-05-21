@@ -183,8 +183,8 @@ def main() -> None:
 
     # ── Missing info panel ──────────────────────────────────────────────────
     resume_fields = json.loads(submission.resume_fields_json or "{}")
-    with st.expander("Missing Info — what to address in your revision", expanded=True):
-        render_missing_panel(resume_fields, submission.resume_raw_text or "", key_prefix="revise_")
+    st.subheader("Missing Info — address these in your revision")
+    render_missing_panel(resume_fields, submission.resume_raw_text or "", key_prefix="revise_")
     st.divider()
 
     # ── Current draft (collapsible) ─────────────────────────────────────────
