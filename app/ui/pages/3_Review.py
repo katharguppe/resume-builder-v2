@@ -13,7 +13,7 @@ import streamlit as st
 from app.best_practice.searcher import search_best_practice
 from app.composer.pdf_writer import generate_resume_pdf
 from app.llm.provider import rewrite_resume
-from app.scoring import compute_ats_score
+from app.scoring import compute_ats_score, detect_missing
 from app.ui.components.missing_panel import render_missing_panel
 from app.state.db import AuthDB, SubmissionsDB
 from app.state.models import SubmissionRecord, SubmissionStatus
@@ -270,6 +270,8 @@ def main() -> None:
         st.divider()
         st.subheader("Missing Info")
         render_missing_panel(resume_fields, submission.resume_raw_text or "", key_prefix="review_")
+        if detect_missing(resume_fields, submission.resume_raw_text or ""):
+            st.caption("To fill in missing details, click **Request Revision** below and add them in the revision box.")
 
     with col_right:
         _render_jd_alignment(llm_output, jd_fields)

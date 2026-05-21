@@ -195,11 +195,12 @@ def main() -> None:
     # ── Revision form ───────────────────────────────────────────────────────
     with st.form("revision_form"):
         hint = st.text_area(
-            "What would you like changed?",
+            "What would you like changed? (also add any missing details here)",
             height=120,
             placeholder=(
-                "e.g. Make the summary more concise. "
-                "Emphasise leadership experience. Add AWS keywords."
+                "e.g. Make the summary more concise. Emphasise leadership experience. Add AWS keywords.\n\n"
+                "Missing details: My phone is +91 98765 43210. My LinkedIn is linkedin.com/in/yourname. "
+                "I have a B.Com degree from XYZ University (2018)."
             ),
         )
         submitted = st.form_submit_button("↺ Submit Revision")
