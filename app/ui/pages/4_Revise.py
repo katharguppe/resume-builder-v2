@@ -50,7 +50,7 @@ def _run_revision_pipeline(
         revision_hint=revision_hint,
     )
 
-    ats = compute_ats_score(resume_fields, jd_fields)
+    ats = compute_ats_score(resume_fields, jd_fields, submission.resume_raw_text or "")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = output_dir / f"{submission.id}_resume.pdf"

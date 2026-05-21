@@ -45,7 +45,7 @@ def _run_rewrite_pipeline(
     best_practice = search_best_practice(job_title)
     llm_output = rewrite_resume(submission.resume_raw_text or "", submission.jd_raw_text or "", best_practice)
 
-    ats = compute_ats_score(resume_fields, jd_fields)
+    ats = compute_ats_score(resume_fields, jd_fields, submission.resume_raw_text or "")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = output_dir / f"{submission.id}_resume.pdf"
