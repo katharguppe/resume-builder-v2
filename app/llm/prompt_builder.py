@@ -520,6 +520,14 @@ You must respond with ONLY valid JSON matching this schema exactly. No markdown 
 }}
 """
     if revision_hint.strip():
-        prompt += f"\n\n=== REVISION REQUEST ===\n{revision_hint.strip()}\nApply this specific feedback when rewriting the resume."
+        prompt += (
+            f"\n\n=== REVISION REQUEST (USER-SUPPLIED — AUTHORITATIVE) ===\n"
+            f"{revision_hint.strip()}\n"
+            f"IMPORTANT OVERRIDE: Any contact details, facts, or personal data the user has provided above "
+            f"(phone number, email, LinkedIn URL, degree, company name, dates, etc.) are AUTHORITATIVE. "
+            f"Treat them as source material supplied by the candidate themselves — include them in your output. "
+            f"This overrides the 'leave blank if not in source resume' constraint for these specific items only. "
+            f"Do NOT invent anything the user has not explicitly stated."
+        )
 
     return prompt.strip()

@@ -63,10 +63,14 @@ def _run_revision_pipeline(
     if not ok:
         raise RuntimeError("PDF generation failed")
 
+    # Append revision hint to raw text so detect_missing picks up user-supplied facts
+    updated_raw = (submission.resume_raw_text or "") + f"\n\n[USER-PROVIDED IN REVISION]: {revision_hint}"
+
     subs_db.update_submission(submission.id, {
         "llm_output_json": json.dumps(llm_output),
         "ats_score_json": json.dumps(dataclasses.asdict(ats)),
         "output_pdf_path": str(pdf_path),
+        "resume_raw_text": updated_raw,
     })
     subs_db.set_status(submission.id, SubmissionStatus.REVIEW_READY)
 
