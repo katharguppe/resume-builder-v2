@@ -14,7 +14,7 @@ from app.best_practice.searcher import search_best_practice
 from app.composer.pdf_writer import generate_resume_pdf
 from app.composer.print_writer import generate_print_pdf
 from app.llm.provider import rewrite_resume
-from app.scoring import compute_ats_score, detect_missing
+from app.scoring import compute_ats_score, detect_missing, explain_ats_score
 from app.ui.components.missing_panel import render_missing_panel
 from app.state.db import AuthDB, SubmissionsDB
 from app.state.models import SubmissionRecord, SubmissionStatus
@@ -109,10 +109,16 @@ def _require_auth():
 
 # ── Render helpers (no st.stop calls) ──────────────────────────────────────
 
-def _render_ats_panel(ats_dict: dict) -> None:
-    """Render ATS score breakdown in the left column."""
+def _render_ats_panel(ats_dict: dict, resume_fields: dict, resume_raw_text: str) -> None:
+    """Render ATS score breakdown with JobOS tier label and rationale expander."""
     total = ats_dict.get("total", 0)
-    st.metric("ATS Score", f"{total} / 100")
+
+    rationale = explain_ats_score(ats_dict, resume_fields, resume_raw_text)
+    st.markdown(
+        f"### {rationale.tier_icon} {rationale.tier}",
+    )
+    st.caption(f"{total} / 100 — {rationale.tier_meaning}")
+
     st.progress(
         min(ats_dict.get("keyword_match", 0) / 30, 1.0),
         text=f"Keyword Match: {ats_dict.get('keyword_match', 0)}/30",
@@ -129,6 +135,22 @@ def _render_ats_panel(ats_dict: dict) -> None:
         min(ats_dict.get("structure_completeness", 0) / 20, 1.0),
         text=f"Structure: {ats_dict.get('structure_completeness', 0)}/20",
     )
+
+    with st.expander("Why this score? (JobOS breakdown)"):
+        if rationale.top_actions:
+            st.markdown("**Top fixes to improve your score:**")
+            for i, action in enumerate(rationale.top_actions, 1):
+                st.markdown(f"{i}. {action}")
+            st.divider()
+
+        for dim in rationale.dimensions:
+            passed = dim.passed_count
+            total_c = dim.total_count
+            st.markdown(f"**{dim.name}** ({dim.weight_pct}% weight) — {passed}/{total_c} criteria met")
+            for c in dim.criteria:
+                icon = "✅" if c.passed else "⚠️"
+                note = f" — {c.note}" if c.note else ""
+                st.markdown(f"&nbsp;&nbsp;&nbsp;{icon} {c.label}{note}")
 
 
 
@@ -276,7 +298,7 @@ def main() -> None:
     col_left, col_right = st.columns([2, 3])
 
     with col_left:
-        _render_ats_panel(ats_dict)
+        _render_ats_panel(ats_dict, resume_fields, submission.resume_raw_text or "")
         st.divider()
         st.subheader("Missing Info")
         render_missing_panel(resume_fields, submission.resume_raw_text or "", key_prefix="review_")
