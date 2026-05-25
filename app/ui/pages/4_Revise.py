@@ -13,6 +13,7 @@ import streamlit as st
 from app.best_practice.searcher import search_best_practice
 from app.ui.components.missing_panel import render_missing_panel
 from app.composer.pdf_writer import generate_resume_pdf
+from app.composer.print_writer import generate_print_pdf
 from app.llm.provider import rewrite_resume
 from app.scoring import compute_ats_score
 from app.state.db import AuthDB, SubmissionsDB
@@ -63,15 +64,24 @@ def _run_revision_pipeline(
     if not ok:
         raise RuntimeError("PDF generation failed")
 
+    print_pdf_path = output_dir / f"{submission.id}_print.pdf"
+    print_ok = generate_print_pdf(llm_output, photo_bytes, print_pdf_path)
+    if not print_ok:
+        logger.warning("Print PDF generation failed for submission %s — ATS PDF unaffected", submission.id)
+        print_pdf_path = None
+
     # Append revision hint to raw text so detect_missing picks up user-supplied facts
     updated_raw = (submission.resume_raw_text or "") + f"\n\n[USER-PROVIDED IN REVISION]: {revision_hint}"
 
-    subs_db.update_submission(submission.id, {
+    updates = {
         "llm_output_json": json.dumps(llm_output),
         "ats_score_json": json.dumps(dataclasses.asdict(ats)),
         "output_pdf_path": str(pdf_path),
         "resume_raw_text": updated_raw,
-    })
+    }
+    if print_pdf_path is not None:
+        updates["output_print_pdf_path"] = str(print_pdf_path)
+    subs_db.update_submission(submission.id, updates)
     subs_db.set_status(submission.id, SubmissionStatus.REVIEW_READY)
 
 

@@ -12,6 +12,7 @@ import streamlit as st
 
 from app.best_practice.searcher import search_best_practice
 from app.composer.pdf_writer import generate_resume_pdf
+from app.composer.print_writer import generate_print_pdf
 from app.llm.provider import rewrite_resume
 from app.scoring import compute_ats_score, detect_missing
 from app.ui.components.missing_panel import render_missing_panel
@@ -58,11 +59,20 @@ def _run_rewrite_pipeline(
     if not ok:
         raise RuntimeError("PDF generation failed")
 
-    subs_db.update_submission(submission.id, {
+    print_pdf_path = output_dir / f"{submission.id}_print.pdf"
+    print_ok = generate_print_pdf(llm_output, photo_bytes, print_pdf_path)
+    if not print_ok:
+        logger.warning("Print PDF generation failed for submission %s — ATS PDF unaffected", submission.id)
+        print_pdf_path = None
+
+    updates = {
         "llm_output_json": json.dumps(llm_output),
         "ats_score_json": json.dumps(dataclasses.asdict(ats)),
         "output_pdf_path": str(pdf_path),
-    })
+    }
+    if print_pdf_path is not None:
+        updates["output_print_pdf_path"] = str(print_pdf_path)
+    subs_db.update_submission(submission.id, updates)
     subs_db.set_status(submission.id, SubmissionStatus.REVIEW_READY)
 
 
