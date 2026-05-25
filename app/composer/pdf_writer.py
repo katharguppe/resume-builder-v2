@@ -28,17 +28,17 @@ def highlight_missing(text: str) -> str:
 def generate_resume_pdf(json_data: dict, photo_bytes: bytes | None, output_path: pathlib.Path) -> bool:
     """
     Composes a PDF resume given the LLM JSON output and optionally a photo.
-    Layout: 
+    Layout:
       - Top-right 3x3cm photo (if present)
       - Header (Name, contact)
       - Summary, Experience, Education, Skills
-    Max 2 pages, 2cm margins.
+    Paginates naturally, 2cm margins.
     Returns True if generated successfully, else False.
     """
     try:
         page_w, page_h = A4
         margin = 2 * cm
-        # Build to in-memory buffer first, then enforce 2-page cap
+        # Build to in-memory buffer, then write directly to disk
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
             buffer,
