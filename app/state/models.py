@@ -37,6 +37,7 @@ class SubmissionRecord:
     output_pdf_path: Optional[str] = None
     payment_link_id: Optional[str] = None
     payment_id: Optional[str] = None
+    output_print_pdf_path: Optional[str] = None
 
 class CandidateStatus(str, Enum):
     PENDING = "PENDING"

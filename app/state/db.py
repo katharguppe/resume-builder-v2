@@ -407,6 +407,8 @@ class SubmissionsDB(_SqliteDB):
                 conn.execute("ALTER TABLE submissions ADD COLUMN payment_link_id TEXT")
             if "payment_id" not in existing_cols:
                 conn.execute("ALTER TABLE submissions ADD COLUMN payment_id TEXT")
+            if "output_print_pdf_path" not in existing_cols:
+                conn.execute("ALTER TABLE submissions ADD COLUMN output_print_pdf_path TEXT")
             conn.commit()
 
     def create_submission(self, user_id: int, session_token: str) -> int:
@@ -432,7 +434,7 @@ class SubmissionsDB(_SqliteDB):
     _SUBMISSION_UPDATE_COLUMNS = frozenset({
         "resume_raw_text", "resume_fields_json", "resume_photo_path",
         "jd_raw_text", "jd_fields_json", "ats_score_json",
-        "llm_output_json", "output_pdf_path",
+        "llm_output_json", "output_pdf_path", "output_print_pdf_path",
         "revision_count", "error_message",
         "payment_link_id", "payment_id",
     })

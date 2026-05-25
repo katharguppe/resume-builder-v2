@@ -299,3 +299,17 @@ def test_update_submission_rejects_unknown_column(user_and_submissions_db):
     sub_id = subs_db.create_submission(user_id=user_id, session_token="tok-bad")
     with pytest.raises(ValueError, match="unknown columns"):
         subs_db.update_submission(sub_id, {"nonexistent_col": "value"})
+
+
+def test_output_print_pdf_path_column_exists(tmp_path):
+    """output_print_pdf_path column must exist and be settable after migration."""
+    db_path = tmp_path / "test_print_col.db"
+    from app.state.db import AuthDB, SubmissionsDB
+    auth_db = AuthDB(db_path)
+    subs_db = SubmissionsDB(db_path)
+    user_id = auth_db.create_user("printcol@test.com")
+    sub_id = subs_db.create_submission(user_id=user_id, session_token="tok-printcol")
+    # Should not raise
+    subs_db.update_submission(sub_id, {"output_print_pdf_path": "/tmp/print.pdf"})
+    sub = subs_db.get_submission(sub_id)
+    assert sub.output_print_pdf_path == "/tmp/print.pdf"
