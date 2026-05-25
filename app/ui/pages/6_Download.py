@@ -149,25 +149,47 @@ def _render_pay_button(submission: SubmissionRecord, subs_db: SubmissionsDB) -> 
 
 
 def _render_clean_download(submission: SubmissionRecord, subs_db: SubmissionsDB) -> None:
-    """Serve the clean PDF and set status to DOWNLOADED."""
+    """Serve the clean PDFs and set status to DOWNLOADED."""
     st.success("Payment confirmed! Your resume is ready.")
-    pdf_path = Path(submission.output_pdf_path or "")
-    if not pdf_path.exists():
-        st.error("PDF file not found. Please contact support.")
-        return
 
-    pdf_bytes = pdf_path.read_bytes()
-    clicked = st.download_button(
-        label="Download Resume (PDF)",
-        data=pdf_bytes,
-        file_name="resume.pdf",
-        mime="application/pdf",
-        type="primary",
-        use_container_width=True,
-    )
-    if clicked and submission.status != SubmissionStatus.DOWNLOADED.value:
-        subs_db.set_status(submission.id, SubmissionStatus.DOWNLOADED)
-        logger.info("Submission %s marked DOWNLOADED", submission.id)
+    sub_id = submission.id
+    pdf_path = submission.output_pdf_path
+
+    col_ats, col_print = st.columns(2)
+
+    with col_ats:
+        if pdf_path and Path(pdf_path).exists():
+            pdf_bytes = Path(pdf_path).read_bytes()
+            clicked = st.download_button(
+                label="\u2b07 Download ATS Resume",
+                data=pdf_bytes,
+                file_name=f"ats_resume_{sub_id}.pdf",
+                mime="application/pdf",
+                type="primary",
+                use_container_width=True,
+                key="dl_ats",
+            )
+            if clicked and submission.status != SubmissionStatus.DOWNLOADED.value:
+                subs_db.set_status(submission.id, SubmissionStatus.DOWNLOADED)
+                logger.info("Submission %s marked DOWNLOADED", submission.id)
+        else:
+            st.error("ATS PDF file not found. Please contact support.")
+
+    with col_print:
+        print_pdf_path = submission.output_print_pdf_path
+        if print_pdf_path and Path(print_pdf_path).exists():
+            print_bytes = Path(print_pdf_path).read_bytes()
+            st.download_button(
+                label="\u2b07 Download Print Resume",
+                data=print_bytes,
+                file_name=f"print_resume_{sub_id}.pdf",
+                mime="application/pdf",
+                type="primary",
+                use_container_width=True,
+                key="dl_print",
+            )
+        else:
+            st.caption("Print version unavailable \u2014 contact support.")
 
 
 # ── Page entry point ───────────────────────────────────────────────────────────
