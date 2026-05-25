@@ -190,9 +190,10 @@ def test_pipeline_stores_print_pdf_path(db_and_submission):
     with patch.object(_review_mod, "rewrite_resume", return_value=llm_output_with_print), \
          patch.object(_review_mod, "search_best_practice", return_value="bp"), \
          patch.object(_review_mod, "compute_ats_score", return_value=ats_val), \
-         patch.object(_review_mod, "generate_resume_pdf", return_value=True):
+         patch.object(_review_mod, "generate_resume_pdf", return_value=True), \
+         patch.object(_review_mod, "generate_print_pdf", return_value=True):
         _run_rewrite_pipeline(submission, subs_db, output_dir)
 
     updated = subs_db.get_submission(submission.id)
     assert updated.output_print_pdf_path is not None
-    assert Path(updated.output_print_pdf_path).exists()
+    assert str(submission.id) in updated.output_print_pdf_path

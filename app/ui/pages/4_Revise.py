@@ -185,7 +185,7 @@ def main() -> None:
         return
 
     # ── Revision cap guard (belt-and-suspenders per CLAUDE.md §3) ──────────
-    if (submission.revision_count or 0) > MAX_REVISIONS:
+    if (submission.revision_count or 0) >= MAX_REVISIONS:
         st.warning(f"Maximum revisions ({MAX_REVISIONS}) already used.")
         if st.button("← Back to Review"):
             st.switch_page("pages/3_Review.py")
