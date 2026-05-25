@@ -3,8 +3,6 @@ import logging
 import pathlib
 import re
 
-import fitz  # PyMuPDF
-
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -252,18 +250,8 @@ def generate_resume_pdf(json_data: dict, photo_bytes: bytes | None, output_path:
         doc.build(elements, onFirstPage=_draw_photo_first_page)
 
         buffer.seek(0)
-        pdf_doc = fitz.open(stream=buffer.read(), filetype="pdf")
+        output_path.write_bytes(buffer.read())
         buffer.close()
-        try:
-            if len(pdf_doc) > 2:
-                logger.warning(
-                    f"Resume exceeded 2 pages ({len(pdf_doc)} pages); truncating to 2."
-                )
-                while len(pdf_doc) > 2:
-                    pdf_doc.delete_page(len(pdf_doc) - 1)
-            pdf_doc.save(str(output_path))
-        finally:
-            pdf_doc.close()
 
         logger.info(f"Successfully generated PDF: {output_path}")
         return True
