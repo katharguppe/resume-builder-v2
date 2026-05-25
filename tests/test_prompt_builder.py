@@ -359,3 +359,19 @@ def test_build_finetuning_prompt_backward_compatible_no_new_params():
     prompt = build_finetuning_prompt("resume text", "jd text", "bp text", "Name")
     assert isinstance(prompt, str)
     assert len(prompt) > 100
+
+
+def test_finetuning_prompt_includes_print_fields():
+    prompt = build_finetuning_prompt("resume text", "jd text", "best practice", "Alice")
+    assert "print_fields" in prompt
+    assert "company_intro" in prompt
+    assert "core_skills" in prompt
+    assert "languages" in prompt
+    assert "notice_period" in prompt
+
+
+def test_finetuning_prompt_experience_has_city_and_company_intro():
+    prompt = build_finetuning_prompt("resume text", "jd text", "best practice", "Alice")
+    # Both new experience fields must appear in schema
+    assert '"city"' in prompt
+    assert '"company_intro"' in prompt

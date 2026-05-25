@@ -513,10 +513,35 @@ You must respond with ONLY valid JSON matching this schema exactly. No markdown 
   "candidate_name": "{candidate_name}",
   "contact": {{ "email": "string", "phone": "string", "linkedin": "string" }},
   "summary": "string - 3-4 lines, JD-aligned",
-  "experience": [ {{ "title": "string", "company": "string", "dates": "string", "bullets": ["string"] }} ],
+  "experience": [
+    {{
+      "title": "string",
+      "company": "string",
+      "city": "string - city where role was based, or empty string if not found",
+      "dates": "string - Month-Year format e.g. Jan 2020 - Mar 2023",
+      "company_intro": "string - one line describing what the company does, or empty string if not found",
+      "bullets": ["string"]
+    }}
+  ],
   "education": [ {{ "degree": "string", "institution": "string", "year": "string" }} ],
   "skills": ["string"],
-  "missing_fields": ["string - any field that was blank or unclear in source resume"]
+  "missing_fields": ["string - any field that was blank or unclear in source resume"],
+  "print_fields": {{
+    "gender": "string extracted from resume, or [MISSING: Gender]",
+    "dob": "string in DD-MMM-YYYY format extracted from resume, or [MISSING: Date of Birth]",
+    "age": "string - integer age calculated from DOB if DOB found, else empty string",
+    "city": "string - candidate current city from resume, or [MISSING: City]",
+    "open_to_relocate": false,
+    "notice_period": "string extracted from resume e.g. 30 days, 2 months, or [MISSING: Notice Period]",
+    "portfolio_url": "string - GitHub/Behance/ArtStation/portfolio URL if found, else empty string",
+    "core_skills": ["string - up to 5 core technical or domain skills from the resume"],
+    "tools_platforms": ["string - up to 5 tools and platforms from the resume"],
+    "soft_skills": ["string - up to 5 soft skills from the resume"],
+    "psychometric_type": "string - 16Personalities type if mentioned in resume e.g. ENFJ, else [MISSING: Psychometric Type]",
+    "languages": [ {{ "language": "string", "proficiency": "string e.g. Native, Full Professional, Conversational" }} ],
+    "certifications": [ {{ "name": "string", "issuing_body": "string", "year": "string" }} ],
+    "awards": ["string - one-liner award or recognition"]
+  }}
 }}
 """
     if revision_hint.strip():
