@@ -188,7 +188,7 @@ def test_recency_rule_role_2_and_beyond_max_3_bullets():
         {"title": "R0", "company": "C", "dates": "2022 - Present", "bullets": ["b1"]},
         {"title": "R1", "company": "C", "dates": "2019 - 2022", "bullets": ["b1"]},
         {"title": "R2", "company": "C", "dates": "2016 - 2019", "bullets": ["b1", "b2", "b3", "b4", "b5"]},
-        {"title": "R3", "company": "C", "dates": "2013 - 2016", "bullets": ["b1", "b2", "b3", "b4"]},
+        {"title": "R3", "company": "C", "dates": "2017 - 2020", "bullets": ["b1", "b2", "b3", "b4"]},
     ]
     result = _apply_recency_rule(experience)
     assert len(result[2]["bullets"]) == 3

@@ -47,7 +47,7 @@ def _apply_recency_rule(experience: list) -> list:
         exp_copy = dict(exp)
         bullets = list(exp_copy.get("bullets", []))
         start_year = _extract_start_year(exp_copy.get("dates", ""))
-        is_old = start_year is not None and start_year < (_CURRENT_YEAR - 13)
+        is_old = start_year is not None and start_year < (_CURRENT_YEAR - 10)
 
         if is_old:
             bullets = bullets[:1]
