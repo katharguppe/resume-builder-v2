@@ -288,18 +288,34 @@ def main() -> None:
         st.divider()
         _render_resume_text(llm_output)
 
-        # PDF download button
-        pdf_path = submission.output_pdf_path
-        if pdf_path and Path(pdf_path).exists():
-            pdf_bytes = Path(pdf_path).read_bytes()
-            st.download_button(
-                label="⬇ Download PDF",
-                data=pdf_bytes,
-                file_name=f"resume_{sub_id}.pdf",
-                mime="application/pdf",
-            )
-        else:
-            st.caption("PDF not available for download.")
+        # PDF download buttons — ATS + Print side by side
+        dl_col_ats, dl_col_print = st.columns(2)
+        with dl_col_ats:
+            pdf_path = submission.output_pdf_path
+            if pdf_path and Path(pdf_path).exists():
+                st.download_button(
+                    label="⬇ Download ATS Resume",
+                    data=Path(pdf_path).read_bytes(),
+                    file_name=f"ats_resume_{sub_id}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                    key="review_dl_ats",
+                )
+            else:
+                st.caption("ATS PDF not available.")
+        with dl_col_print:
+            print_path = submission.output_print_pdf_path
+            if print_path and Path(print_path).exists():
+                st.download_button(
+                    label="⬇ Download Print Resume",
+                    data=Path(print_path).read_bytes(),
+                    file_name=f"print_resume_{sub_id}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                    key="review_dl_print",
+                )
+            else:
+                st.caption("Print PDF not available.")
 
     # ── Action bar ─────────────────────────────────────────────────────────
     st.divider()

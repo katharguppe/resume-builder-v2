@@ -110,20 +110,43 @@ def _verify_and_confirm(submission: SubmissionRecord, subs_db: SubmissionsDB, pa
 # ── Render helpers ─────────────────────────────────────────────────────────────
 
 def _render_watermarked_preview(submission: SubmissionRecord) -> None:
-    """Show watermarked PDF preview and Pay button."""
+    """Show watermarked PDF previews (ATS + Print) and Pay button."""
     price_inr = int(os.getenv("RESUME_DOWNLOAD_PRICE_INR", "99"))
-    st.info(f"Your resume is ready. Pay \u20b9{price_inr} to download the clean PDF.")
+    st.info(f"Your resume is ready. Pay \u20b9{price_inr} to download clean versions of both resumes.")
 
-    pdf_path = Path(submission.output_pdf_path or "")
-    if pdf_path.exists():
-        watermarked = watermark_pdf_bytes(pdf_path)
-        st.download_button(
-            label="Preview (watermarked)",
-            data=watermarked,
-            file_name="resume_preview.pdf",
-            mime="application/pdf",
-            help="This is a PREVIEW. Pay below to get the clean version.",
-        )
+    col_ats, col_print = st.columns(2)
+
+    with col_ats:
+        st.markdown("**ATS Resume** — optimised for job boards & applicant tracking systems")
+        pdf_path = Path(submission.output_pdf_path or "")
+        if pdf_path.exists():
+            st.download_button(
+                label="Preview ATS (watermarked)",
+                data=watermark_pdf_bytes(pdf_path),
+                file_name="ats_resume_preview.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+                help="Watermarked preview. Pay below to get the clean version.",
+                key="wm_ats",
+            )
+        else:
+            st.caption("ATS preview not available.")
+
+    with col_print:
+        st.markdown("**Print Resume** — formatted for human readers, interviews & printing")
+        print_path = Path(submission.output_print_pdf_path or "")
+        if print_path.exists():
+            st.download_button(
+                label="Preview Print (watermarked)",
+                data=watermark_pdf_bytes(print_path),
+                file_name="print_resume_preview.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+                help="Watermarked preview. Pay below to get the clean version.",
+                key="wm_print",
+            )
+        else:
+            st.caption("Print preview not available.")
 
     st.markdown("---")
     st.subheader(f"Pay \u20b9{price_inr} to Download")
