@@ -3,8 +3,6 @@ import logging
 import pathlib
 import re
 
-import fitz  # PyMuPDF
-
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -30,17 +28,17 @@ def highlight_missing(text: str) -> str:
 def generate_resume_pdf(json_data: dict, photo_bytes: bytes | None, output_path: pathlib.Path) -> bool:
     """
     Composes a PDF resume given the LLM JSON output and optionally a photo.
-    Layout: 
+    Layout:
       - Top-right 3x3cm photo (if present)
       - Header (Name, contact)
       - Summary, Experience, Education, Skills
-    Max 2 pages, 2cm margins.
+    Paginates naturally, 2cm margins.
     Returns True if generated successfully, else False.
     """
     try:
         page_w, page_h = A4
         margin = 2 * cm
-        # Build to in-memory buffer first, then enforce 2-page cap
+        # Build to in-memory buffer, then write directly to disk
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
             buffer,
@@ -252,18 +250,8 @@ def generate_resume_pdf(json_data: dict, photo_bytes: bytes | None, output_path:
         doc.build(elements, onFirstPage=_draw_photo_first_page)
 
         buffer.seek(0)
-        pdf_doc = fitz.open(stream=buffer.read(), filetype="pdf")
+        output_path.write_bytes(buffer.read())
         buffer.close()
-        try:
-            if len(pdf_doc) > 2:
-                logger.warning(
-                    f"Resume exceeded 2 pages ({len(pdf_doc)} pages); truncating to 2."
-                )
-                while len(pdf_doc) > 2:
-                    pdf_doc.delete_page(len(pdf_doc) - 1)
-            pdf_doc.save(str(output_path))
-        finally:
-            pdf_doc.close()
 
         logger.info(f"Successfully generated PDF: {output_path}")
         return True

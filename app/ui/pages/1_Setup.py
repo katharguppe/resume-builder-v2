@@ -18,14 +18,20 @@ _PROJECT_ROOT = str(Path(__file__).resolve().parent.parent.parent.parent)
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from app.state.db import StateDB
+from app.state.db import StateDB, AuthDB
 from app.email_handler.crypto import encrypt_password
 
 
-db_path = Path(os.getcwd()) / "resume_tuner.db"
+db_path = Path(os.getenv("DB_PATH", "resume_tuner.db"))
 db = StateDB(db_path)
 
 st.set_page_config(page_title="Setup - Resume Finetuner", page_icon="⚙️", layout="wide")
+
+_auth_db = st.session_state.setdefault("auth_db", AuthDB(Path(os.getenv("AUTH_DB_PATH", "resume_builder.db"))))
+if not _auth_db.get_session(st.session_state.get("auth_token", "")):
+    st.error("Please sign in to continue.")
+    st.switch_page("pages/0_Login.py")
+    st.stop()
 
 st.title("System Setup")
 st.markdown("Configure the system before processing candidates.")
@@ -151,11 +157,16 @@ batch_size_choice = st.selectbox(
     index=_opts_str.index(_saved_bs) if _saved_bs in _opts_str else len(_BATCH_OPTIONS) - 1,
 )
 
-# Anthropic API key
-gemini_api_key = st.text_input(
+# API Keys
+anthropic_api_key = st.text_input(
     "Anthropic API Key (leave blank to keep existing)",
     type="password",
     help="Only enter if you want to change the key. Leave blank to keep the one in .env."
+)
+gemini_api_key = st.text_input(
+    "Gemini API Key (leave blank to keep existing)",
+    type="password",
+    help="Used by the default LLM_EXTRACT_PROVIDER=gemini. Leave blank to keep the one in .env."
 )
 
 st.divider()
@@ -174,8 +185,10 @@ if st.button("💾 Save Configuration", type="primary"):
     # Password required only on first-time setup
     if not saved and not smtp_password:
         errors.append("SMTP App Password is required for first-time setup.")
-    if not saved and not gemini_api_key:
+    if not saved and not anthropic_api_key:
         errors.append("Anthropic API Key is required for first-time setup.")
+    if not saved and not gemini_api_key:
+        errors.append("Gemini API Key is required for first-time setup.")
 
     batch_size = 0 if batch_size_choice == "All" else int(batch_size_choice)
 
@@ -219,9 +232,10 @@ if st.button("💾 Save Configuration", type="primary"):
 
             db.save_config(config_data)
 
-            # Save Anthropic key only if entered
+            if anthropic_api_key:
+                set_key(str(env_path), "ANTHROPIC_API_KEY", anthropic_api_key)
             if gemini_api_key:
-                set_key(str(env_path), "ANTHROPIC_API_KEY", gemini_api_key)
+                set_key(str(env_path), "GEMINI_API_KEY", gemini_api_key)
 
         st.success("✅ Configuration saved successfully!")
         st.switch_page("pages/2_Dashboard.py")

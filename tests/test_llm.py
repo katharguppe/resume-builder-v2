@@ -3,8 +3,8 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from app.llm.prompt_builder import build_finetuning_prompt, build_extraction_prompt
-from app.llm.finetuner import extract_fields, rewrite_resume, fine_tune_resume
-from app.config import config
+from app.llm.finetuner import extract_fields, rewrite_resume, fine_tune_resume, extract_resume_fields_claude, extract_jd_fields_claude, extract_resume_fields_gemini, extract_jd_fields_gemini, rewrite_resume_deepseek
+from app.config import config as app_config
 
 
 # ── prompt_builder tests ────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ def test_extract_fields_failure(mock_get_client):
     with pytest.raises(ValueError, match="Failed to obtain valid JSON from extract_fields"):
         extract_fields("resume")
 
-    assert mock_client.messages.create.call_count == config.MAX_LLM_RETRIES
+    assert mock_client.messages.create.call_count == app_config.MAX_LLM_RETRIES
 
 
 # ── rewrite_resume tests ────────────────────────────────────────────────────
@@ -137,11 +137,55 @@ def test_rewrite_resume_failure(mock_get_client):
     # extract succeeds, then Sonnet always returns bad JSON
     mock_client.messages.create.side_effect = (
         [_make_message(EXTRACT_JSON)]
-        + [_make_message("bad json")] * config.MAX_LLM_RETRIES
+        + [_make_message("bad json")] * app_config.MAX_LLM_RETRIES
     )
 
     with pytest.raises(ValueError, match="Failed to obtain valid JSON from rewrite_resume"):
         rewrite_resume("resume", "jd", "bp")
+
+
+# ── Phase 2: extract_resume_fields_claude + extract_jd_fields_claude ─────────
+
+
+def _mock_llm_response(json_str: str):
+    msg = MagicMock()
+    msg.content = [MagicMock(text=json_str)]
+    return msg
+
+
+def test_extract_resume_fields_claude_returns_dict():
+    payload = '{"candidate_name":"Alice","email":"a@b.com","phone":"555","current_title":"Engineer","skills":["Python"],"experience_summary":"5 years"}'
+    with patch("app.llm.finetuner._get_client") as mock_client:
+        mock_client.return_value.messages.create.return_value = _mock_llm_response(payload)
+        result = extract_resume_fields_claude("Alice resume text")
+    assert result["candidate_name"] == "Alice"
+    assert result["skills"] == ["Python"]
+    assert result["current_title"] == "Engineer"
+
+
+def test_extract_resume_fields_claude_retries_on_bad_json():
+    good = '{"candidate_name":"Bob","email":"","phone":"","current_title":"","skills":[],"experience_summary":""}'
+    responses = [_mock_llm_response("not json"), _mock_llm_response(good)]
+    with patch("app.llm.finetuner._get_client") as mock_client:
+        mock_client.return_value.messages.create.side_effect = responses
+        result = extract_resume_fields_claude("Bob resume text")
+    assert result["candidate_name"] == "Bob"
+
+
+def test_extract_jd_fields_claude_returns_dict():
+    payload = '{"job_title":"SWE","company":"ACME","required_skills":["Python","SQL"],"preferred_skills":[],"experience_required":"3 years","education_required":"BS","key_responsibilities":["Build APIs"]}'
+    with patch("app.llm.finetuner._get_client") as mock_client:
+        mock_client.return_value.messages.create.return_value = _mock_llm_response(payload)
+        result = extract_jd_fields_claude("We need a SWE at ACME")
+    assert result["job_title"] == "SWE"
+    assert "Python" in result["required_skills"]
+
+
+def test_extract_jd_fields_claude_raises_after_max_retries():
+    with patch("app.llm.finetuner._get_client") as mock_client:
+        mock_client.return_value.messages.create.return_value = _mock_llm_response("not valid json")
+        with pytest.raises(ValueError, match="max retries"):
+            extract_jd_fields_claude("some jd text")
 
 
 # ── fine_tune_resume backward-compat wrapper ────────────────────────────────
@@ -158,3 +202,130 @@ def test_fine_tune_resume_compat(mock_get_client):
     result = fine_tune_resume("resume", "jd", "bp", "ignored_name_hint")
     assert result["candidate_name"] == "Bob"
     assert mock_client.messages.create.call_count == 2
+
+
+# ── Gemini Flash extract adapters ───────────────────────────────────────────
+
+
+def _make_gemini_response(text: str) -> MagicMock:
+    resp = MagicMock()
+    resp.text = text
+    return resp
+
+
+RESUME_FIELDS_JSON = '{"candidate_name":"Alice","email":"a@b.com","phone":"555","current_title":"Engineer","skills":["Python"],"experience_summary":"5 years"}'
+JD_FIELDS_JSON = '{"job_title":"SWE","company":"ACME","required_skills":["Python"],"preferred_skills":[],"experience_required":"3y","education_required":"BS","key_responsibilities":["Build APIs"]}'
+
+
+@patch("app.llm.finetuner._get_genai_model")
+def test_extract_resume_fields_gemini_happy_path(mock_get_model):
+    mock_model = MagicMock()
+    mock_get_model.return_value = mock_model
+    mock_model.generate_content.return_value = _make_gemini_response(RESUME_FIELDS_JSON)
+
+    result = extract_resume_fields_gemini("Alice resume text")
+
+    mock_get_model.assert_called_once()
+    assert result["candidate_name"] == "Alice"
+    assert result["skills"] == ["Python"]
+
+
+@patch("app.llm.finetuner._get_genai_model")
+def test_extract_resume_fields_gemini_retry_then_pass(mock_get_model):
+    mock_model = MagicMock()
+    mock_get_model.return_value = mock_model
+    mock_model.generate_content.side_effect = [
+        _make_gemini_response("not json"),
+        _make_gemini_response(RESUME_FIELDS_JSON),
+    ]
+
+    result = extract_resume_fields_gemini("resume")
+    assert result["candidate_name"] == "Alice"
+    assert mock_model.generate_content.call_count == 2
+
+
+@patch("app.llm.finetuner._get_genai_model")
+def test_extract_resume_fields_gemini_raises_after_max_retries(mock_get_model):
+    mock_model = MagicMock()
+    mock_get_model.return_value = mock_model
+    mock_model.generate_content.return_value = _make_gemini_response("bad json always")
+
+    with pytest.raises(ValueError, match="extract_resume_fields_gemini"):
+        extract_resume_fields_gemini("resume")
+
+
+@patch("app.llm.finetuner._get_genai_model")
+def test_extract_jd_fields_gemini_happy_path(mock_get_model):
+    mock_model = MagicMock()
+    mock_get_model.return_value = mock_model
+    mock_model.generate_content.return_value = _make_gemini_response(JD_FIELDS_JSON)
+
+    result = extract_jd_fields_gemini("SWE role at ACME")
+    assert result["job_title"] == "SWE"
+    assert "Python" in result["required_skills"]
+
+
+# ── DeepSeek V3 rewrite adapter ─────────────────────────────────────────────
+
+DEEPSEEK_REWRITE_JSON = json.dumps({
+    "candidate_name": "Alice",
+    "contact": {"email": "a@b.com", "phone": "555", "linkedin": ""},
+    "summary": "Strong engineer.",
+    "experience": [],
+    "education": [],
+    "skills": ["Python"],
+    "missing_fields": [],
+})
+
+
+def _make_deepseek_response(text: str) -> MagicMock:
+    choice = MagicMock()
+    choice.message.content = text
+    resp = MagicMock()
+    resp.choices = [choice]
+    return resp
+
+
+@patch("app.llm.finetuner._get_client")
+@patch("app.llm.finetuner._get_deepseek_client")
+def test_rewrite_resume_deepseek_happy_path(mock_get_ds, mock_get_client):
+    mock_ds_client = MagicMock()
+    mock_get_ds.return_value = mock_ds_client
+    mock_get_client.return_value.messages.create.return_value = _make_message(EXTRACT_JSON)
+    mock_ds_client.chat.completions.create.return_value = _make_deepseek_response(DEEPSEEK_REWRITE_JSON)
+
+    result = rewrite_resume_deepseek("Alice resume", "SWE JD", "best practice")
+
+    assert result["candidate_name"] == "Alice"
+    assert result["summary"] == "Strong engineer."
+    mock_ds_client.chat.completions.create.assert_called_once()
+    call_kwargs = mock_ds_client.chat.completions.create.call_args.kwargs
+    assert call_kwargs["model"] == app_config.LLM_DEEPSEEK_REWRITE_MODEL
+
+
+@patch("app.llm.finetuner._get_client")
+@patch("app.llm.finetuner._get_deepseek_client")
+def test_rewrite_resume_deepseek_retry_then_pass(mock_get_ds, mock_get_client):
+    mock_ds_client = MagicMock()
+    mock_get_ds.return_value = mock_ds_client
+    mock_get_client.return_value.messages.create.return_value = _make_message(EXTRACT_JSON)
+    mock_ds_client.chat.completions.create.side_effect = [
+        _make_deepseek_response("bad json"),
+        _make_deepseek_response(DEEPSEEK_REWRITE_JSON),
+    ]
+
+    result = rewrite_resume_deepseek("resume", "jd", "bp")
+    assert result["candidate_name"] == "Alice"
+    assert mock_ds_client.chat.completions.create.call_count == 2
+
+
+@patch("app.llm.finetuner._get_client")
+@patch("app.llm.finetuner._get_deepseek_client")
+def test_rewrite_resume_deepseek_raises_after_max_retries(mock_get_ds, mock_get_client):
+    mock_ds_client = MagicMock()
+    mock_get_ds.return_value = mock_ds_client
+    mock_get_client.return_value.messages.create.return_value = _make_message(EXTRACT_JSON)
+    mock_ds_client.chat.completions.create.return_value = _make_deepseek_response("not json")
+
+    with pytest.raises(ValueError, match="rewrite_resume_deepseek"):
+        rewrite_resume_deepseek("resume", "jd", "bp")

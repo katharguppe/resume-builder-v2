@@ -11,7 +11,7 @@ _PROJECT_ROOT = str(Path(__file__).resolve().parent.parent.parent.parent)
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from app.state.db import StateDB
+from app.state.db import StateDB, AuthDB
 from app.state.models import CandidateStatus
 from app.state.checkpoint import CheckpointManager
 from app.ui.runner import BatchRunner
@@ -21,7 +21,13 @@ from app.email_handler.sender import send_outreach_email, send_final_pdf_email
 
 st.set_page_config(page_title="Dashboard - Resume Finetuner", page_icon="📄", layout="wide")
 
-db_path = Path(os.getcwd()) / "resume_tuner.db"
+_auth_db = st.session_state.setdefault("auth_db", AuthDB(Path(os.getenv("AUTH_DB_PATH", "resume_builder.db"))))
+if not _auth_db.get_session(st.session_state.get("auth_token", "")):
+    st.error("Please sign in to continue.")
+    st.switch_page("pages/0_Login.py")
+    st.stop()
+
+db_path = Path(os.getenv("DB_PATH", "resume_tuner.db"))
 db = StateDB(db_path)
 config = db.get_config()
 
