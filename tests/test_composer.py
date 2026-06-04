@@ -106,12 +106,12 @@ def test_header_name_extractable_as_plain_text(tmp_path, dummy_json, dummy_photo
     assert "Johnny Test" in text
     assert "johnny@test.com" in text
 
-def test_max_2_pages_long_content(tmp_path):
-    """PDF must never exceed 2 pages even with very long experience section."""
+def test_long_resume_not_truncated(tmp_path):
+    """Long resume must NOT be truncated — content flows across pages naturally."""
     big_json = {
         "candidate_name": "Long Resume Person",
         "contact": {"email": "long@test.com", "phone": "555-1234", "linkedin": "li.com/long"},
-        "summary": "A very experienced professional." * 5,
+        "summary": "A very experienced professional. " * 10,
         "experience": [
             {
                 "title": f"Engineer Level {i}",
@@ -128,8 +128,11 @@ def test_max_2_pages_long_content(tmp_path):
     result = generate_resume_pdf(big_json, None, output_pdf)
     assert result is True
     doc = fitz.open(str(output_pdf))
-    assert len(doc) <= 2, f"Expected ≤2 pages, got {len(doc)}"
+    page_count = len(doc)
     doc.close()
+    assert page_count > 2, (
+        f"Expected long resume to span >2 pages without truncation, got {page_count}"
+    )
 
 def test_photo_handler_no_temp_file_leak(dummy_photo_bytes):
     """process_photo_for_pdf must not leave temp files on disk."""

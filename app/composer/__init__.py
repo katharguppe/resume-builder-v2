@@ -6,5 +6,6 @@ and generates a professionally formatted PDF resume.
 """
 
 from .pdf_writer import generate_resume_pdf
+from .print_writer import generate_print_pdf
 
-__all__ = ["generate_resume_pdf"]
+__all__ = ["generate_resume_pdf", "generate_print_pdf"]
